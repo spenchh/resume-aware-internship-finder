@@ -43,50 +43,64 @@ load_env()
 st.markdown(
     """
     <style>
-      .stApp { background: linear-gradient(180deg, #eef3fe 0%, #f4f7fc 22%, #f4f7fc 100%); }
+      /* ---- Dark, sharp, trustworthy palette -----------------------------
+         bg #080B10 · surface #111722 · elevated #161E2B · border #273244
+         text #F4F7FB · muted #AAB4C3 · accent teal #22D3A6 · cyan #38BDF8
+         success #34D399 · warning #FBBF24 · risk/unverified #FB7185        */
+      .stApp { background:
+        radial-gradient(900px 480px at 50% -8%, #0E1623 0%, #080B10 60%); }
       .block-container { padding-top: 2.2rem; max-width: 880px; }
 
       /* Hero */
       .hero { text-align:center; margin-bottom: 1.1rem; }
       .hero h1 { font-size: 2.15rem; font-weight: 800; letter-spacing:-.02em;
-                 background: linear-gradient(95deg,#4f6df5,#22b3c9); -webkit-background-clip:text;
+                 background: linear-gradient(95deg,#22D3A6,#38BDF8); -webkit-background-clip:text;
                  -webkit-text-fill-color:transparent; margin-bottom:.25rem; }
-      .hero p { color:#52607a; font-size:1.02rem; max-width:580px; margin:.2rem auto 0; }
+      .hero p { color:#AAB4C3; font-size:1.02rem; max-width:580px; margin:.2rem auto 0; }
+      .hero p b { color:#F4F7FB; font-weight:600; }
 
-      /* Benefit chips */
+      /* Benefit chips — thin border, dark fill, accent dot */
       .chips { display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; margin:1.1rem 0 .4rem; }
-      .chip { background:#fff; border:1px solid #e3e9f5; border-radius:14px; padding:.6rem .9rem;
-              box-shadow:0 2px 10px rgba(70,100,200,.06); font-size:.86rem; color:#33415c;
-              display:flex; align-items:center; gap:.45rem; }
-      .chip b { color:#1e293b; font-weight:600; }
+      .chip { background:#111722; border:1px solid #273244; border-radius:14px; padding:.55rem .9rem;
+              font-size:.86rem; color:#AAB4C3; display:flex; align-items:center; gap:.5rem; }
+      .chip::before { content:""; width:7px; height:7px; border-radius:50%;
+                      background:#22D3A6; box-shadow:0 0 8px rgba(34,211,166,.6); flex:0 0 auto; }
+      .chip b { color:#F4F7FB; font-weight:600; }
 
-      /* Soft rounded cards everywhere */
+      /* Elevated panels (upload + result cards) */
       div[data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius:18px !important; border:1px solid #e6ecf7 !important;
-        box-shadow:0 4px 20px rgba(70,100,200,.07); background:#fff; }
+        border-radius:18px !important; border:1px solid #273244 !important;
+        box-shadow:0 6px 26px rgba(0,0,0,.45); background:#111722; }
 
-      /* Buttons: rounded + cozy */
+      /* Buttons: rounded + sharp */
       .stButton>button, .stDownloadButton>button, .stLinkButton>a {
-        border-radius:12px !important; font-weight:600; border:1px solid transparent; }
+        border-radius:12px !important; font-weight:600; border:1px solid #273244;
+        background:#161E2B; color:#F4F7FB; }
+      .stButton>button:hover, .stDownloadButton>button:hover, .stLinkButton>a:hover {
+        border-color:#38BDF8; color:#F4F7FB; }
+      /* Primary CTA — teal with a tiny glow */
       .stButton>button[kind="primary"] {
-        background:linear-gradient(95deg,#5b7cfa,#3aa7d6); border:none; box-shadow:0 4px 14px rgba(70,110,230,.28); }
+        background:linear-gradient(95deg,#22D3A6,#14B8A6); border:none; color:#04130E;
+        box-shadow:0 0 0 1px rgba(34,211,166,.35), 0 6px 22px rgba(34,211,166,.28); }
+      .stButton>button[kind="primary"]:hover { color:#04130E;
+        box-shadow:0 0 0 1px rgba(34,211,166,.55), 0 8px 28px rgba(34,211,166,.4); }
 
-      /* Inputs rounded */
+      /* Inputs rounded + dark */
       div[data-baseweb="select"]>div, .stTextInput input, .stFileUploader section {
         border-radius:12px !important; }
-      .stFileUploader section { border:1.5px dashed #c5d2ee; background:#fbfcff; }
+      .stFileUploader section { border:1.5px dashed #2F3D52; background:#0D131D; }
 
-      /* Privacy note */
-      .privacy { color:#6b7a96; font-size:.82rem; text-align:center; margin:.5rem 0 0; }
+      /* Privacy note — quiet trust row */
+      .privacy { color:#7E8AA0; font-size:.82rem; text-align:center; margin:.5rem 0 0; }
 
       /* Score badge + status pills on result cards */
-      .badge { display:inline-block; background:#eef2ff; color:#3a55cf; font-weight:700;
-               border-radius:10px; padding:.12rem .55rem; font-size:.82rem; }
-      .pill  { display:inline-block; border-radius:999px; padding:.08rem .5rem; font-size:.74rem;
-               margin-right:.3rem; border:1px solid #e3e9f5; color:#475069; background:#f7f9fe; }
-      .legend { font-size:.8rem; color:#5a6781; }
-      .company { font-weight:700; font-size:1.04rem; color:#172033; }
-      .title   { color:#3a4965; font-size:.95rem; }
+      .badge { display:inline-block; background:rgba(34,211,166,.12); color:#22D3A6; font-weight:700;
+               border:1px solid rgba(34,211,166,.35); border-radius:10px; padding:.12rem .55rem; font-size:.82rem; }
+      .pill  { display:inline-block; border-radius:999px; padding:.1rem .55rem; font-size:.74rem;
+               margin-right:.3rem; border:1px solid #273244; color:#AAB4C3; background:#0D131D; }
+      .legend { font-size:.8rem; color:#AAB4C3; }
+      .company { font-weight:700; font-size:1.04rem; color:#F4F7FB; }
+      .title   { color:#AAB4C3; font-size:.95rem; }
       footer, #MainMenu { visibility:hidden; }
     </style>
     """,
@@ -117,14 +131,14 @@ def _days_to_deadline(l: dict) -> int:
 st.markdown(
     """
     <div class="hero">
-      <h1>🔎 Internship Finder</h1>
-      <p>Upload your resume, tell us the roles you want, and we'll find
-         <b>fresh, still-open</b> internships matched to your background — in any field.</p>
+      <h1>Internship Finder</h1>
+      <p>Upload resume. Set your target. Get <b>verified, still-open</b>
+         internship leads — matched to your background, in any field.</p>
     </div>
     <div class="chips">
-      <div class="chip">✅ <b>Live-checked roles</b></div>
-      <div class="chip">🎯 <b>Resume-based scoring</b></div>
-      <div class="chip">🕒 <b>Freshness-first results</b></div>
+      <div class="chip"><b>Live-checked</b> roles</div>
+      <div class="chip"><b>Resume-based</b> scoring</div>
+      <div class="chip"><b>Freshness-first</b> results</div>
     </div>
     """,
     unsafe_allow_html=True,

@@ -1,11 +1,12 @@
 # Streamlit app config (used locally and on Streamlit Community Cloud).
-# Cool, cozy palette — soft indigo/sky on a light tinted background.
+# Dark, sharp, trustworthy — a focused "career search cockpit", not neon.
 [theme]
-primaryColor = "#5b7cfa"            # cool indigo — buttons, accents
-backgroundColor = "#f4f7fc"         # main area, gentle cool tint
-secondaryBackgroundColor = "#ffffff" # cards, sidebar, inputs
-textColor = "#1e293b"               # slate
+base = "dark"
+primaryColor = "#22D3A6"              # teal accent — primary CTA, focus rings
+backgroundColor = "#080B10"           # near-black main area (not pure black)
+secondaryBackgroundColor = "#111722"  # surfaces, sidebar, inputs
+textColor = "#F4F7FB"                 # primary text
 font = "sans serif"
 
 [server]
-maxUploadSize = 10                  # MB — resumes are tiny
+maxUploadSize = 10                    # MB — resumes are tiny
