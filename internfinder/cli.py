@@ -7,7 +7,9 @@ import argparse
 import logging
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, Optional
 
 from . import freshness_validator as freshness
 from . import matcher, report_generator
@@ -93,21 +95,48 @@ def _overrides_from_args(args) -> dict:
     return ov
 
 
-def run(argv=None) -> int:
-    args = build_parser().parse_args(argv)
-    _setup_logging(args.verbose)
-    load_env()
+@dataclass
+class PipelineResult:
+    """Everything a caller (CLI or web UI) needs after a finder run."""
 
-    if not Path(args.resume).exists():
-        log.error("Resume not found: %s", args.resume)
-        return 2
+    reported: list          # list[Listing] above the score threshold, sorted
+    profile: object         # ResumeProfile used for matching
+    new_keys: list          # dedup keys new since the previous run
+    closed_keys: list       # dedup keys no longer listed since the previous run
+    total_fetched: int      # raw listings pulled before dedup/eligibility
+    seconds: float          # wall-clock duration
 
-    config = load_config(args.config)
-    apply_overrides(config, _overrides_from_args(args))
+
+# Type of an optional progress reporter: progress(message, fraction_0_to_1_or_None).
+ProgressFn = Callable[[str, Optional[float]], None]
+
+
+def run_pipeline(
+    resume_path: str | Path,
+    config: dict,
+    *,
+    cache_path: str = "cache.db",
+    sources: str | None = None,
+    progress: ProgressFn | None = None,
+) -> PipelineResult:
+    """Run the full finder pipeline on one resume and return the results.
+
+    This is the single source of truth for both the CLI (``run`` below) and the
+    Streamlit web app (``streamlit_app.py``). It performs no printing and writes
+    no report files — the caller decides how to present ``PipelineResult``.
+    """
+
+    def _p(msg: str, frac: float | None = None) -> None:
+        log.info(msg)
+        if progress is not None:
+            try:
+                progress(msg, frac)
+            except Exception:  # pragma: no cover - UI callback must never crash the run
+                pass
 
     t0 = time.monotonic()
-    log.info("Parsing resume: %s", args.resume)
-    profile = parse_resume(args.resume, config)
+    _p(f"Parsing resume: {Path(resume_path).name}", 0.04)
+    profile = parse_resume(resume_path, config)
 
     http = HttpClient(config.get("http", {}))
     role_keywords = list(dict.fromkeys(
@@ -118,22 +147,24 @@ def run(argv=None) -> int:
 
     # --- 1. Fetch ---------------------------------------------------------
     enabled = None
-    if args.sources:
-        enabled = {s.strip() for s in args.sources.split(",")}
+    if sources:
+        parts = sources.split(",") if isinstance(sources, str) else sources
+        enabled = {s.strip() for s in parts if str(s).strip()}
     listings = []
-    for label, fetch in SOURCES:
+    n_src = len(SOURCES)
+    for i, (label, fetch) in enumerate(SOURCES):
         if enabled is not None and label not in enabled:
             continue
+        _p(f"Searching {label}…", 0.08 + 0.40 * i / n_src)
         try:
-            got = fetch(ctx)
-            listings.extend(got)
+            listings.extend(fetch(ctx))
         except Exception as exc:
             log.warning("source %s crashed: %s", label, exc)
-    log.info("Fetched %d raw listings from sources", len(listings))
+    _p(f"Fetched {len(listings)} raw listings from sources", 0.50)
     if not listings:
         log.warning("No listings fetched. Check source slugs in config.yaml and your connection.")
 
-    cache = Cache(args.cache)
+    cache = Cache(cache_path)
     run_id = cache.start_run()
 
     # --- 2. Observe (first-seen) + resolve dates -------------------------
@@ -146,20 +177,21 @@ def run(argv=None) -> int:
 
     # --- 4. Eligibility windows ------------------------------------------
     eligible = [l for l in listings if freshness.mark_eligibility(l, config)]
-    log.info("Eligibility: %d/%d listings within recency/deadline windows", len(eligible), len(listings))
+    _p(f"{len(eligible)} of {len(listings)} listings within recency/deadline windows", 0.55)
 
     # --- 5. Live-check (immediately before reporting, Section 6.4) -------
     do_live = bool(config.get("freshness", {}).get("live_check", True))
     if do_live:
-        log.info("Live-checking %d URLs…", len(eligible))
+        n_elig = max(len(eligible), 1)
         dead = 0
         for i, l in enumerate(eligible, 1):
+            if i == 1 or i % 5 == 0 or i == len(eligible):
+                _p(f"Live-checking listings {i}/{len(eligible)} (verifying still open)…",
+                   0.55 + 0.33 * i / n_elig)
             freshness.live_check(l, http, config)
             cache.record_verification(l.cache_key(), l.live_status, l.live_checked_at)
             if l.live_status == LIVE_DEAD:
                 dead += 1
-            if i % 20 == 0:
-                log.info("  live-checked %d/%d (%d dead so far)", i, len(eligible), dead)
         retained = [l for l in eligible if l.live_status != LIVE_DEAD]
         log.info("Live-check: dropped %d dead, %d retained", dead, len(retained))
     else:
@@ -169,6 +201,7 @@ def run(argv=None) -> int:
         log.info("Live-check disabled — %d listings retained unverified-live", len(retained))
 
     # --- 6. Score --------------------------------------------------------
+    _p(f"Scoring {len(retained)} listings against your resume…", 0.90)
     matcher.score_listings(profile, retained, config)
     min_score = int(config.get("matching", {}).get("min_score_to_report", 0))
     reported = [l for l in retained if l.match_score >= min_score]
@@ -181,17 +214,42 @@ def run(argv=None) -> int:
         cache.record_run_listing(run_id, l, reported=id(l) in reported_set)
     new_keys, closed_keys = cache.diff_since_last_run(run_id, reported)
     cache.finish_run(run_id, len(listings), len(reported))
-
-    # --- 8. Report -------------------------------------------------------
-    paths = report_generator.generate(
-        reported, profile, config, diff=(new_keys, closed_keys)
-    )
     cache.close()
 
-    dt = time.monotonic() - t0
+    seconds = time.monotonic() - t0
+    _p(f"Done — {len(reported)} listings reported", 1.0)
+    return PipelineResult(
+        reported=reported,
+        profile=profile,
+        new_keys=new_keys,
+        closed_keys=closed_keys,
+        total_fetched=len(listings),
+        seconds=seconds,
+    )
+
+
+def run(argv=None) -> int:
+    args = build_parser().parse_args(argv)
+    _setup_logging(args.verbose)
+    load_env()
+
+    if not Path(args.resume).exists():
+        log.error("Resume not found: %s", args.resume)
+        return 2
+
+    config = load_config(args.config)
+    apply_overrides(config, _overrides_from_args(args))
+
+    result = run_pipeline(args.resume, config, cache_path=args.cache, sources=args.sources)
+
+    paths = report_generator.generate(
+        result.reported, result.profile, config,
+        diff=(result.new_keys, result.closed_keys),
+    )
+
     print()
-    print(f"Done in {dt:.1f}s — {len(reported)} listings reported "
-          f"({len(new_keys)} new, {len(closed_keys)} no longer listed since last run).")
+    print(f"Done in {result.seconds:.1f}s — {len(result.reported)} listings reported "
+          f"({len(result.new_keys)} new, {len(result.closed_keys)} no longer listed since last run).")
     for fmt, path in paths.items():
         print(f"  {fmt:8} -> {path}")
     if not paths:

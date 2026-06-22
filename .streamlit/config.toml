@@ -1,0 +1,10 @@
+# Streamlit app config (used locally and on Streamlit Community Cloud).
+[theme]
+primaryColor = "#0b3d2e"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f6f7f9"
+textColor = "#1c1e21"
+
+[server]
+# Allow larger resume uploads (default is already 200MB; keep modest).
+maxUploadSize = 10

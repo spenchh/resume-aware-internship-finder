@@ -17,6 +17,7 @@ reports/
 # Secrets / local env
 .env
 *.local.yaml
+.streamlit/secrets.toml
 
 # OS
 Thumbs.db

@@ -15,7 +15,43 @@ robotics, DSP/RF) but works for any field — the domain weighting is just confi
 
 ---
 
-## Quickstart
+## 🌐 Use it on the web (no install — just upload your resume)
+
+The entire tool runs in the browser via **`streamlit_app.py`**: upload a resume,
+click **Find internships**, and it parses, searches, live-verifies, scores, and
+lists the results — with filters and downloadable reports. Nothing to install for
+whoever uses it.
+
+**Deploy your own copy (free, ~3 minutes):**
+
+1. Make sure this repo is on GitHub (it is: `spenchh/resume-aware-internship-finder`).
+2. Go to **[share.streamlit.io](https://share.streamlit.io)** and sign in with GitHub.
+3. Click **Create app → Deploy a public app from GitHub** and choose:
+   - **Repository:** `spenchh/resume-aware-internship-finder`
+   - **Branch:** `main`
+   - **Main file path:** `streamlit_app.py`
+4. *(Optional)* Under **Advanced settings → Secrets**, paste any API keys you have
+   (all optional — the app works without them):
+   ```toml
+   ANTHROPIC_API_KEY = "sk-ant-..."   # enables Claude AI match scoring
+   SERPAPI_API_KEY   = "..."          # enables Google Jobs source
+   GITHUB_TOKEN      = "..."          # higher rate limit for curated GitHub lists
+   ```
+5. Click **Deploy**. You'll get a public URL like
+   `https://spenchh-resume-aware-internship-finder.streamlit.app` — that's your app.
+
+Re-deploys are automatic on every `git push`.
+
+**Run the web app locally** (optional):
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+---
+
+## Quickstart (command line)
 
 ```bash
 # 1. Install (Python 3.10+)
