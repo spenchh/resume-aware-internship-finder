@@ -1,7 +1,7 @@
 """Resume-Aware Internship Finder — web app (Streamlit).
 
-The whole tool in the browser: upload a resume (or try the sample), tell it what
-roles you want, and the same backend that powers the CLI parses it, searches
+The whole tool in the browser: upload a resume, tell it what roles you want,
+and the same backend that powers the CLI parses it, searches
 date-reliable sources, **live-verifies every listing is still open**, scores the
 matches to YOUR background (any field — not just engineering), and shows them as
 scannable job cards. Nothing to install.
@@ -33,9 +33,8 @@ from internfinder.cli import run_pipeline
 from internfinder.config import apply_overrides, load_config, load_env
 
 TODAY = datetime.now(timezone.utc).date()
-SAMPLE_RESUME = Path(__file__).resolve().parent / "sample_data" / "sample_resume.txt"
 
-st.set_page_config(page_title="Internship Finder", page_icon="🔎", layout="centered")
+st.set_page_config(page_title="Internship Finder", layout="centered")
 load_env()
 
 
@@ -43,72 +42,83 @@ load_env()
 st.markdown(
     """
     <style>
-      /* ---- Dark, sharp, trustworthy palette -----------------------------
-         bg #080B10 · surface #111722 · elevated #161E2B · border #273244
-         text #F4F7FB · muted #AAB4C3 · accent teal #22D3A6 · cyan #38BDF8
-         success #34D399 · warning #FBBF24 · risk/unverified #FB7185        */
-      .stApp { background:
-        radial-gradient(900px 480px at 50% -8%, #0E1623 0%, #080B10 60%); }
-      .block-container { padding-top: 2.2rem; max-width: 880px; }
+      @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap');
+
+      /* ---- Flat dark palette --------------------------------------------
+         bg #0E1117 · surface #161B22 · raised #1C2230 · border #2A313C
+         text #E6E8EB · muted #9BA3AF · accent #2F81F7
+         live #3FB950 · approx #D29922 · risk #F85149                       */
+      html, body, .stApp, button, input, textarea, select,
+      [class*="css"] { font-family:'Lato', sans-serif !important; }
+
+      .stApp { background:#0E1117; }
+      .block-container { padding-top: 2.2rem; max-width: 820px; }
 
       /* Hero */
       .hero { text-align:center; margin-bottom: 1.1rem; }
-      .hero h1 { font-size: 2.15rem; font-weight: 800; letter-spacing:-.02em;
-                 background: linear-gradient(95deg,#22D3A6,#38BDF8); -webkit-background-clip:text;
-                 -webkit-text-fill-color:transparent; margin-bottom:.25rem; }
-      .hero p { color:#AAB4C3; font-size:1.02rem; max-width:580px; margin:.2rem auto 0; }
-      .hero p b { color:#F4F7FB; font-weight:600; }
+      .hero h1 { font-size: 2.1rem; font-weight: 900; letter-spacing:-.01em;
+                 color:#E6E8EB; margin-bottom:.3rem; }
+      .hero p { color:#9BA3AF; font-size:1.0rem; max-width:560px; margin:.2rem auto 0; }
+      .hero p b { color:#E6E8EB; font-weight:700; }
 
-      /* Benefit chips — thin border, dark fill, accent dot */
-      .chips { display:flex; gap:.6rem; justify-content:center; flex-wrap:wrap; margin:1.1rem 0 .4rem; }
-      .chip { background:#111722; border:1px solid #273244; border-radius:14px; padding:.55rem .9rem;
-              font-size:.86rem; color:#AAB4C3; display:flex; align-items:center; gap:.5rem; }
-      .chip::before { content:""; width:7px; height:7px; border-radius:50%;
-                      background:#22D3A6; box-shadow:0 0 8px rgba(34,211,166,.6); flex:0 0 auto; }
-      .chip b { color:#F4F7FB; font-weight:600; }
+      /* Benefit chips — flat, thin border */
+      .chips { display:flex; gap:.5rem; justify-content:center; flex-wrap:wrap; margin:1rem 0 .4rem; }
+      .chip { background:#161B22; border:1px solid #2A313C; border-radius:8px; padding:.5rem .85rem;
+              font-size:.85rem; color:#9BA3AF; }
+      .chip b { color:#E6E8EB; font-weight:700; }
 
-      /* Elevated panels (upload + result cards) */
+      /* Panels (upload + result cards) — flat surface, thin border */
       div[data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius:18px !important; border:1px solid #273244 !important;
-        box-shadow:0 6px 26px rgba(0,0,0,.45); background:#111722; }
+        border-radius:10px !important; border:1px solid #2A313C !important; background:#161B22; }
 
-      /* Buttons: rounded + sharp */
+      /* Buttons — flat */
       .stButton>button, .stDownloadButton>button, .stLinkButton>a {
-        border-radius:12px !important; font-weight:600; border:1px solid #273244;
-        background:#161E2B; color:#F4F7FB; }
+        border-radius:8px !important; font-weight:700; border:1px solid #2A313C;
+        background:#1C2230; color:#E6E8EB; }
       .stButton>button:hover, .stDownloadButton>button:hover, .stLinkButton>a:hover {
-        border-color:#38BDF8; color:#F4F7FB; }
-      /* Primary CTA — teal with a tiny glow */
+        border-color:#3D4757; color:#E6E8EB; }
       .stButton>button[kind="primary"] {
-        background:linear-gradient(95deg,#22D3A6,#14B8A6); border:none; color:#04130E;
-        box-shadow:0 0 0 1px rgba(34,211,166,.35), 0 6px 22px rgba(34,211,166,.28); }
-      .stButton>button[kind="primary"]:hover { color:#04130E;
-        box-shadow:0 0 0 1px rgba(34,211,166,.55), 0 8px 28px rgba(34,211,166,.4); }
+        background:#2F81F7; border:1px solid #2F81F7; color:#fff; }
+      .stButton>button[kind="primary"]:hover { background:#388BFD; border-color:#388BFD; color:#fff; }
 
-      /* Inputs rounded + dark */
+      /* Inputs */
       div[data-baseweb="select"]>div, .stTextInput input, .stFileUploader section {
-        border-radius:12px !important; }
-      .stFileUploader section { border:1.5px dashed #2F3D52; background:#0D131D; }
+        border-radius:8px !important; }
+      .stFileUploader section { border:1px dashed #2A313C; background:#0E1117; }
 
       /* Privacy note — quiet trust row */
-      .privacy { color:#7E8AA0; font-size:.82rem; text-align:center; margin:.5rem 0 0; }
+      .privacy { color:#6E7681; font-size:.82rem; text-align:center; margin:.5rem 0 0; }
 
       /* Score badge + status pills on result cards */
-      .badge { display:inline-block; background:rgba(34,211,166,.12); color:#22D3A6; font-weight:700;
-               border:1px solid rgba(34,211,166,.35); border-radius:10px; padding:.12rem .55rem; font-size:.82rem; }
-      .pill  { display:inline-block; border-radius:999px; padding:.1rem .55rem; font-size:.74rem;
-               margin-right:.3rem; border:1px solid #273244; color:#AAB4C3; background:#0D131D; }
-      .legend { font-size:.8rem; color:#AAB4C3; }
-      .company { font-weight:700; font-size:1.04rem; color:#F4F7FB; }
-      .title   { color:#AAB4C3; font-size:.95rem; }
+      .badge { display:inline-block; background:#1C2230; color:#E6E8EB; font-weight:700;
+               border:1px solid #2A313C; border-radius:6px; padding:.12rem .55rem; font-size:.82rem; }
+      .pill  { display:inline-block; border-radius:6px; padding:.1rem .5rem; font-size:.74rem;
+               margin-right:.35rem; border:1px solid #2A313C; color:#9BA3AF; background:#0E1117; }
+      .legend { font-size:.8rem; color:#9BA3AF; }
+      .company { font-weight:700; font-size:1.05rem; color:#E6E8EB; }
+      .title   { color:#9BA3AF; font-size:.95rem; }
       footer, #MainMenu { visibility:hidden; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-_CONF_ICON = {"verified": "🟢", "approximate": "🟡", "unverified": "🔴"}
-_LIVE_ICON = {"live": "✅", "unknown": "⚠️", "dead": "❌", "not_checked": "—"}
+# Status shown as colored text — no emoji. (label, color)
+_CONF_TEXT = {
+    "verified": ("verified", "#3FB950"),
+    "approximate": ("approx.", "#D29922"),
+    "unverified": ("unverified", "#F85149"),
+}
+_LIVE_TEXT = {
+    "live": ("live", "#3FB950"),
+    "unknown": ("unconfirmed", "#D29922"),
+    "dead": ("closed", "#F85149"),
+    "not_checked": ("not checked", "#6E7681"),
+}
+
+
+def _status(text: str, color: str) -> str:
+    return f'<span style="color:{color};font-weight:700">{text}</span>'
 
 
 def _to_date(s):
@@ -206,7 +216,7 @@ with st.container(border=True):
     upload = st.file_uploader("Drop a PDF, DOCX, or TXT", type=["pdf", "docx", "doc", "txt", "md"],
                               label_visibility="collapsed")
     st.markdown(
-        '<p class="privacy">🔒 Your resume is used only for this search and is '
+        '<p class="privacy">Your resume is used only for this search and is '
         "not stored on any server.</p>", unsafe_allow_html=True)
 
     st.markdown("#### 2 · What are you looking for?")
@@ -219,7 +229,7 @@ with st.container(border=True):
              "Leave blank and we'll infer it from your resume.",
     )
 
-    with st.expander("⚙️ Advanced search options"):
+    with st.expander("Advanced search options"):
         a1, a2 = st.columns(2)
         recency_days = a1.slider("Posted within (days)", 7, 60, 21, 1)
         deadline_days = a2.slider("Deadline within (days)", 7, 60, 14, 1)
@@ -234,18 +244,11 @@ with st.container(border=True):
     if term == "Any term / not sure":
         term = ""
 
-    b1, b2 = st.columns([3, 2])
-    run_clicked = b1.button("🚀 Find internships", type="primary", use_container_width=True,
+    run_clicked = st.button("Find internships", type="primary", use_container_width=True,
                             disabled=upload is None)
-    sample_clicked = b2.button("✨ Try the sample resume", use_container_width=True)
 
 if run_clicked and upload is not None:
     _run(upload.getvalue(), upload.name, term=term, target_role=target_role,
-         recency_days=recency_days, deadline_days=deadline_days,
-         live_check=live_check, llm_mode=llm_mode)
-elif sample_clicked and SAMPLE_RESUME.exists():
-    _run(SAMPLE_RESUME.read_bytes(), SAMPLE_RESUME.name,
-         term=term or "Summer 2027", target_role=target_role,
          recency_days=recency_days, deadline_days=deadline_days,
          live_check=live_check, llm_mode=llm_mode)
 
@@ -262,19 +265,23 @@ st.success(
     f"· scanned {res['total_fetched']} raw listings · {len(res['new'])} new since your last run."
 )
 
-# Legend so the status icons are never something to guess at.
+# Legend so the status colors are never something to guess at.
 st.markdown(
-    '<p class="legend">🟢 Verified date &nbsp; 🟡 Approximate date &nbsp; 🔴 Unverified date '
-    '&nbsp;|&nbsp; ✅ Live confirmed &nbsp; ⚠️ Unconfirmed &nbsp; ❌ Closed</p>',
+    '<p class="legend">Date: '
+    + _status("verified", "#3FB950") + " / " + _status("approx.", "#D29922")
+    + " / " + _status("unverified", "#F85149")
+    + " &nbsp;|&nbsp; Live status: "
+    + _status("live", "#3FB950") + " / " + _status("unconfirmed", "#D29922")
+    + " / " + _status("closed", "#F85149") + "</p>",
     unsafe_allow_html=True)
 
 # ----- downloads -----
 out_dir = Path(res["out_dir"])
 d1, d2, d3 = st.columns(3)
 for col, name, label, mime in [
-    (d1, "latest.md", "⬇️ Markdown", "text/markdown"),
-    (d2, "latest.html", "⬇️ Web page", "text/html"),
-    (d3, "latest.json", "⬇️ JSON", "application/json"),
+    (d1, "latest.md", "Markdown", "text/markdown"),
+    (d2, "latest.html", "Web page", "text/html"),
+    (d3, "latest.json", "JSON", "application/json"),
 ]:
     f = out_dir / name
     if f.exists():
@@ -282,7 +289,7 @@ for col, name, label, mime in [
                             use_container_width=True)
 
 # ----- filters -----
-with st.expander("🔎 Filter & sort"):
+with st.expander("Filter & sort"):
     fc1, fc2, fc3 = st.columns([2, 1, 1])
     query = fc1.text_input("Search company / title").strip().lower()
     min_score = fc2.slider("Min match", 0, 100, 0, 5)
@@ -343,30 +350,32 @@ for l in rows:
 
         loc = l.get("location") or "—"
         mode = l.get("work_mode") or "unknown"
+        conf_label, conf_color = _CONF_TEXT.get(conf, (conf, "#9BA3AF"))
+        live_label, live_color = _LIVE_TEXT.get(live, (live.replace("_", " "), "#9BA3AF"))
         st.markdown(
-            f'<span class="pill">📍 {loc}</span>'
-            f'<span class="pill">💼 {mode}</span>'
-            f'<span class="pill">{_CONF_ICON.get(conf,"")} deadline: {dl}</span>'
-            f'<span class="pill">{_LIVE_ICON.get(live,"")} {live.replace("_"," ")}</span>',
+            f'<span class="pill">{loc}</span>'
+            f'<span class="pill">{mode}</span>'
+            f'<span class="pill">deadline {dl} · {_status(conf_label, conf_color)}</span>'
+            f'<span class="pill">{_status(live_label, live_color)}</span>',
             unsafe_allow_html=True)
 
         ba, bb = st.columns([1, 3])
         if l.get("apply_url"):
-            ba.link_button("Apply ↗", l["apply_url"], use_container_width=True)
+            ba.link_button("Apply", l["apply_url"], use_container_width=True)
 
         with st.expander("Details — why it matches, skills, source"):
             if l.get("company_description"):
                 st.caption(l["company_description"])
             st.markdown(f"**Why it matches:** {l.get('match_rationale','—')}")
             if l.get("matched_keywords"):
-                st.markdown(f"**✅ Matched skills:** {', '.join(l['matched_keywords'])}")
+                st.markdown(f"**Matched skills:** {', '.join(l['matched_keywords'])}")
             if l.get("missing_keywords"):
-                st.markdown(f"**➖ Missing / nice-to-have:** {', '.join(l['missing_keywords'])}")
+                st.markdown(f"**Missing / nice-to-have:** {', '.join(l['missing_keywords'])}")
             reqs = ", ".join(l.get("requirements", []) or []) or "—"
             st.markdown(f"**Listed requirements:** {reqs}")
             st.markdown(
                 f"**Posted:** {l.get('posted_date') or '[unverified]'} "
                 f"({conf} — {l.get('date_source','') or 'no date source'})  \n"
-                f"**Live check:** {_LIVE_ICON.get(live,'')} {live.replace('_',' ')} "
+                f"**Live check:** {live.replace('_',' ')} "
                 f"— {l.get('live_reason','') or 'n/a'}  \n"
                 f"**Source:** {l.get('source','')}")
