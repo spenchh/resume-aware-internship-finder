@@ -47,6 +47,7 @@ class ResumeProfile:
     name: str = ""
     degree: str = ""
     major: str = ""
+    target_role: str = ""  # what the candidate said they're looking for (field-agnostic)
     skills: list[str] = field(default_factory=list)
     tools_languages: list[str] = field(default_factory=list)
     coursework: list[str] = field(default_factory=list)

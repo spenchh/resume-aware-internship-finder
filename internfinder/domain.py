@@ -211,3 +211,87 @@ def extract_known_terms(text: str) -> list[str]:
                 seen.add(term)
                 found.append(term)
     return found
+
+
+# ---------------------------------------------------------------------------
+# Field-AGNOSTIC extraction. The lexicon above is hardware-biased; this lets the
+# tool match ANY field (marketing, finance, biology, design, nursing, law, …) by
+# pulling meaningful terms straight out of the resume text instead of a fixed
+# vocabulary. Used in addition to extract_known_terms so domain folks keep their
+# synonym expansion while everyone else still gets matched.
+# ---------------------------------------------------------------------------
+
+# Common English + resume-boilerplate words we never want as "skills".
+_STOPWORDS: set[str] = {
+    "the", "and", "for", "with", "from", "that", "this", "these", "those", "into",
+    "your", "you", "our", "their", "his", "her", "its", "are", "was", "were", "been",
+    "being", "have", "has", "had", "will", "would", "should", "could", "can", "may",
+    "all", "any", "each", "more", "most", "some", "such", "than", "then", "them",
+    "they", "what", "when", "which", "while", "who", "whom", "how", "why", "where",
+    "over", "under", "between", "across", "within", "about", "above", "below", "after",
+    "before", "during", "out", "off", "per", "via", "etc", "using", "used", "use",
+    "including", "include", "included", "based", "various", "multiple", "several",
+    "new", "strong", "excellent", "proven", "ability", "skills", "skill", "experience",
+    "experienced", "knowledge", "proficient", "proficiency", "familiar", "working",
+    "work", "worked", "team", "teams", "project", "projects", "responsible", "role",
+    "roles", "company", "companies", "industry", "year", "years", "month", "months",
+    "summer", "fall", "spring", "winter", "intern", "internship", "students", "student",
+    "university", "college", "school", "gpa", "degree", "bachelor", "master", "current",
+    "present", "developed", "developing", "create", "created", "creating", "build",
+    "built", "building", "design", "designed", "designing", "manage", "managed",
+    "managing", "lead", "led", "leading", "support", "supported", "help", "helped",
+    "provide", "provided", "ensure", "ensured", "improve", "improved", "increase",
+    "increased", "reduce", "reduced", "implement", "implemented", "perform", "performed",
+    "conduct", "conducted", "assist", "assisted", "collaborate", "collaborated",
+    "responsibilities", "duties", "tasks", "various", "different", "good", "great",
+    "high", "low", "key", "core", "main", "also", "well", "very", "much", "many",
+    "one", "two", "three", "first", "second", "third", "data", "system", "systems",
+    "process", "processes", "tools", "tool", "technologies", "technology", "software",
+    "hardware", "application", "applications", "solution", "solutions", "environment",
+    "email", "phone", "linkedin", "github", "http", "https", "www", "com", "org",
+}
+
+_GEN_WORD_RE = re.compile(r"[A-Za-z][A-Za-z+#.&/-]{1,29}")
+
+
+def _gen_tokens(text: str) -> list[str]:
+    toks: list[str] = []
+    for raw in _GEN_WORD_RE.findall(text.lower()):
+        t = raw.strip(".-/&").strip()
+        if len(t) < 3 or t in _STOPWORDS or t.isdigit():
+            continue
+        toks.append(t)
+    return toks
+
+
+def extract_generic_terms(text: str, *, top_n: int = 40) -> dict[str, float]:
+    """Field-agnostic keyword map from arbitrary resume/JD text.
+
+    Returns ``term -> frequency-ish weight`` for the most salient unigrams and
+    adjacent bigrams (e.g. "financial modeling", "patient care", "graphic design").
+    Weights are modest (≈0.4–0.9) so that, when present, curated domain terms and
+    the user's stated target role still outrank generic noise.
+    """
+    if not text:
+        return {}
+    counts: dict[str, int] = {}
+    # Process line by line so bigrams don't cross unrelated lines/bullets.
+    for line in text.splitlines():
+        toks = _gen_tokens(line)
+        for w in toks:
+            counts[w] = counts.get(w, 0) + 1
+        for a, b in zip(toks, toks[1:]):
+            bigram = f"{a} {b}"
+            counts[bigram] = counts.get(bigram, 0) + 1
+
+    # Keep the most frequent terms; bias toward multi-word phrases (more specific).
+    ranked = sorted(
+        counts.items(),
+        key=lambda kv: (kv[1] + (0.5 if " " in kv[0] else 0.0)),
+        reverse=True,
+    )[:top_n]
+    weights: dict[str, float] = {}
+    for term, c in ranked:
+        w = 0.45 + 0.12 * min(c, 4) + (0.12 if " " in term else 0.0)
+        weights[term] = round(min(w, 0.95), 3)
+    return weights

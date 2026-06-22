@@ -8,6 +8,10 @@
 # ---- Search targeting -------------------------------------------------------
 search:
   term: "Summer 2027"          # target internship term (today is the 2027 cycle)
+  # What field/roles the candidate wants (ANY field — not just engineering).
+  # Drives the web-wide Google Jobs query and is pinned highest in scoring.
+  # Leave blank to infer purely from the resume. The web app fills this in.
+  target_role: ""              # e.g. "marketing, brand strategy" or "FPGA, RTL design"
   # Role keywords. The resume parser AUGMENTS this list with what it finds in
   # your resume; this is the always-on baseline floor for a hardware/embedded bias.
   role_keywords:

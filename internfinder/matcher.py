@@ -39,12 +39,15 @@ _SCORE_SCHEMA = {
 }
 
 _LLM_SYSTEM = (
-    "You score how well a candidate's background fits an internship job "
-    "description. Weight exact matches on tools, programming languages, and "
-    "hardware/embedded skills highest; give partial credit for adjacent skills "
-    "(e.g. Verilog<->RTL). Penalize roles outside the candidate's domain. "
-    "Return an integer score 0-100, a one-sentence rationale, and the matched "
-    "and notable missing skills. Respond only via the provided schema."
+    "You score how well a candidate's background fits an internship, for ANY "
+    "field (engineering, business, design, science, healthcare, the humanities, "
+    "etc.) — never assume a domain. Infer the candidate's field from their resume "
+    "and stated target roles, then weight exact matches on their concrete skills, "
+    "tools, and coursework highest, and give partial credit for adjacent skills. "
+    "Reward roles aligned with the candidate's stated target; score down roles "
+    "that are clearly in a different field than both their background and target. "
+    "Return an integer score 0-100, a one-sentence rationale, and the matched and "
+    "notable missing skills. Respond only via the provided schema."
 )
 
 
@@ -146,8 +149,10 @@ def _maybe_client(config: dict):
 
 def _llm_score(client, model: str, profile: ResumeProfile, listing: Listing) -> None:
     jd = (listing.description_text or "")[:4000]
+    target = getattr(profile, "target_role", "") or "(not specified — infer from the resume)"
     user = (
-        f"CANDIDATE PROFILE:\n{profile.summary or 'Hardware/embedded student.'}\n\n"
+        f"CANDIDATE PROFILE:\n{profile.summary or '(resume text was sparse)'}\n"
+        f"STATED TARGET ROLES/FIELD: {target}\n\n"
         f"INTERNSHIP:\nCompany: {listing.company}\nTitle: {listing.title}\n"
         f"Location: {listing.location}\nDescription:\n{jd or '(no description available; score from the title)'}\n\n"
         "Score the fit."

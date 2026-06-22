@@ -27,11 +27,17 @@ def fetch(ctx: base.SourceContext) -> list[Listing]:
         log.info("serpapi: SERPAPI_API_KEY unset — skipping Google Jobs source")
         return []
 
-    term = ctx.config.get("search", {}).get("term", "")
-    # Build a hardware-biased query from priority keywords + role keywords.
-    priority = ctx.config.get("domain", {}).get("priority_keywords", [])[:4]
-    role = ctx.role_keywords[:3] if ctx.role_keywords else ["intern"]
-    query = " ".join(["internship", *(priority or []), term]).strip()
+    search = ctx.config.get("search", {})
+    term = search.get("term", "")
+    # Field-agnostic query: the candidate's stated target role/field drives the
+    # search if given; otherwise fall back to configured priority keywords. This
+    # is the broadest, web-wide source, so it should reflect what the user wants.
+    target_role = (search.get("target_role", "") or "").strip()
+    if target_role:
+        focus = [t.strip() for t in target_role.replace("/", ",").split(",") if t.strip()][:3]
+    else:
+        focus = ctx.config.get("domain", {}).get("priority_keywords", [])[:4]
+    query = " ".join([*focus, "internship", term]).strip()
 
     locations = ctx.config.get("search", {}).get("locations", []) or ["United States"]
     out: list[Listing] = []

@@ -161,15 +161,17 @@ def parse_resume(path: str | Path, config: dict | None = None) -> ResumeProfile:
     sections = _split_sections(text)
 
     skills_text = sections.get("skills", "")
+    projects_text = sections.get("projects", "")
+    experience_text = sections.get("experience", "")
     # Tech terms anywhere in the resume, but skills/projects sections are richest.
     all_terms = domain.extract_known_terms(text)
-    skill_terms = domain.extract_known_terms(skills_text + "\n" + sections.get("projects", ""))
+    skill_terms = domain.extract_known_terms(skills_text + "\n" + projects_text)
 
     tools_languages = [t for t in all_terms if t in domain.TOOLS_AND_LANGUAGES]
     degree, major = _extract_degree_major(sections.get("education", ""), text)
-    titles = _extract_titles(sections.get("experience", ""), text)
+    titles = _extract_titles(experience_text, text)
     coursework = domain.extract_known_terms(sections.get("coursework", ""))
-    projects = domain.extract_known_terms(sections.get("projects", ""))
+    projects = domain.extract_known_terms(projects_text)
 
     # Build weighted keyword map: synonym-expanded from everything we found, then
     # boosted for terms that appeared in the dedicated skills section, then the
@@ -178,7 +180,27 @@ def parse_resume(path: str | Path, config: dict | None = None) -> ResumeProfile:
     for t in skill_terms:
         weights[t] = max(weights.get(t, 0.0), 1.4)
 
-    priority = config.get("domain", {}).get("priority_keywords", []) if config else []
+    # --- FIELD-AGNOSTIC layer (Section 3.1, generalized) ------------------
+    # Pull plain-language skills from the resume so non-engineering candidates
+    # (finance, biology, design, marketing, nursing, …) match on *their* terms,
+    # not just a hardware lexicon. Skills/projects/experience are the strongest
+    # signal; the rest of the resume contributes weakly.
+    for term, w in domain.extract_generic_terms(
+        "\n".join([skills_text, projects_text, experience_text])
+    ).items():
+        weights[term] = max(weights.get(term, 0.0), 0.6 + 0.6 * w)  # ≈0.9–1.2
+    for term, w in domain.extract_generic_terms(text).items():
+        weights[term] = max(weights.get(term, 0.0), w)              # ≈0.45–0.95
+
+    priority = list(config.get("domain", {}).get("priority_keywords", []) if config else [])
+    # The candidate's stated target role/field is the single strongest signal of
+    # intent — pin it (and any synonyms) highest, above everything inferred.
+    target_role = (config.get("search", {}).get("target_role", "") if config else "") or ""
+    role_terms = [t.strip().lower() for t in re.split(r"[,/;]+", target_role) if t.strip()]
+    for k in role_terms:
+        weights[k] = max(weights.get(k, 0.0), 1.8)
+        for syn in domain.SYNONYMS.get(k, ()):
+            weights[syn] = max(weights.get(syn, 0.0), 0.9)
     for kw in priority:
         k = kw.strip().lower()
         if not k:
@@ -192,6 +214,7 @@ def parse_resume(path: str | Path, config: dict | None = None) -> ResumeProfile:
         name=_extract_name(sections.get("_preamble", "")),
         degree=degree,
         major=major,
+        target_role=target_role.strip(),
         skills=sorted({t for t in all_terms}),
         tools_languages=sorted(set(tools_languages)),
         coursework=coursework,
@@ -214,6 +237,8 @@ def _build_summary(p: ResumeProfile) -> str:
     who = " ".join(x for x in [p.degree, p.major] if x).strip()
     if who:
         bits.append(f"Candidate pursuing {who}.")
+    if p.target_role:
+        bits.append(f"Target roles: {p.target_role}.")
     if p.tools_languages:
         bits.append("Tools/languages: " + ", ".join(p.tools_languages[:18]) + ".")
     other_skills = [s for s in p.skills if s not in p.tools_languages]

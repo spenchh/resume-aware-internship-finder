@@ -72,6 +72,7 @@ def _deep_merge(base: dict, overlay: dict) -> dict:
 _DEFAULTS: dict[str, Any] = {
     "search": {
         "term": "Summer 2027",
+        "target_role": "",  # candidate's stated field/roles; drives web-wide search + scoring
         "role_keywords": ["intern", "internship", "co-op"],
         "locations": ["United States", "Remote"],
         "remote_preference": "any",

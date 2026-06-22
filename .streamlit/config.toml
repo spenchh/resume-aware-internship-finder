@@ -1,10 +1,11 @@
 # Streamlit app config (used locally and on Streamlit Community Cloud).
+# Cool, cozy palette — soft indigo/sky on a light tinted background.
 [theme]
-primaryColor = "#0b3d2e"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f6f7f9"
-textColor = "#1c1e21"
+primaryColor = "#5b7cfa"            # cool indigo — buttons, accents
+backgroundColor = "#f4f7fc"         # main area, gentle cool tint
+secondaryBackgroundColor = "#ffffff" # cards, sidebar, inputs
+textColor = "#1e293b"               # slate
+font = "sans serif"
 
 [server]
-# Allow larger resume uploads (default is already 200MB; keep modest).
-maxUploadSize = 10
+maxUploadSize = 10                  # MB — resumes are tiny

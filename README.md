@@ -4,8 +4,11 @@ Takes your resume, searches multiple **date-reliable** sources for internships
 that match your background, **verifies every listing is actually still live before
 reporting it**, scores the matches, and emits a detailed Markdown/HTML report.
 
-Built hardware/embedded-first (FPGA, RTL, ASIC, firmware, power electronics,
-robotics, DSP/RF) but works for any field — the domain weighting is just config.
+**Works for any field.** Upload a marketing, finance, design, biology, nursing,
+or engineering resume — it reads *your* skills (from your skills, projects, and
+experience) and the roles you say you're targeting, then matches against those.
+A curated hardware/embedded domain lexicon adds synonym-expansion on top for
+those candidates, but nothing assumes you're an engineer.
 
 > **Design priority:** freshness. A listing only appears if it has a determinable
 > recent posted date **or** an upcoming deadline, **and** its application URL
