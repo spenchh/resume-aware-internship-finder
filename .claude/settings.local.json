@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($cmds = @\\('py','python3','python'\\); foreach \\($c in $cmds\\) { $g = Get-Command $c -ErrorAction SilentlyContinue; if \\($g\\) { \"$c -> $\\($g.Source\\)\" } else { \"$c -> NOT FOUND\" } }; \"--- py versions ---\"; try { py -0p 2>&1 } catch { \"py launcher not available\" })",
+      "PowerShell(winget install *)",
+      "Bash(\"C:\\\\Users\\\\HP\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m venv \"C:\\\\Users\\\\HP\\\\Documents\\\\Internship\\\\.venv\")",
+      "Bash(\"C:\\\\Users\\\\HP\\\\Documents\\\\Internship\\\\.venv\\\\Scripts\\\\python.exe\" -m pip install --quiet --upgrade pip)",
+      "Bash(\"C:\\\\Users\\\\HP\\\\Documents\\\\Internship\\\\.venv\\\\Scripts\\\\python.exe\" --version)",
+      "Bash(\".venv/Scripts/python.exe\" -m pip install -r requirements.txt)",
+      "Bash(\".venv/Scripts/python.exe\" -c \"import internfinder.sources.greenhouse as g, internfinder.sources.lever as l, internfinder.sources.ashby as a, internfinder.sources.schemaorg as s, internfinder.resume_parser as rp, internfinder.cache as c, internfinder.domain as d, internfinder.config as cf, internfinder.http_util as h; print\\('imports OK'\\); print\\('lexicon terms:', len\\(d.TECH_LEXICON\\)\\); print\\('expand verilog ->', sorted\\(d.expand_terms\\({'verilog'}\\).items\\(\\), key=lambda x:-x[1]\\)[:6]\\)\")",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Skill(claude-api)",
+      "Bash(\".venv/Scripts/python.exe\" main.py --help)",
+      "Bash(\".venv/Scripts/python.exe\" -m unittest tests.test_core -v)",
+      "Bash(\".venv/Scripts/python.exe\" -m unittest tests.test_core)"
+    ]
+  }
+}

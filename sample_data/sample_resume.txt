@@ -1,0 +1,33 @@
+Jordan Avery
+jordan.avery@example.edu | (555) 010-2244 | Boston, MA | github.com/javery
+
+EDUCATION
+B.S. in Electrical and Computer Engineering, Northeastern University
+Expected May 2027 | GPA: 3.8/4.0
+
+RELEVANT COURSEWORK
+Digital Design, Computer Architecture, Embedded Systems, Signal Processing,
+Power Electronics, VLSI Design, Control Systems, Microcontroller Programming
+
+TECHNICAL SKILLS
+Languages: Verilog, SystemVerilog, C, C++, Python, MATLAB, Assembly, Tcl
+Tools: Vivado, Quartus, ModelSim, Cadence Virtuoso, Altium Designer, KiCad,
+       Git, Linux, Oscilloscope, Logic Analyzer, LTspice
+Areas: FPGA, RTL design, ASIC, embedded firmware, PCB design, DSP, I2C, SPI,
+       UART, power electronics, motor control, RF
+
+EXPERIENCE
+Hardware Engineering Intern — Acme Robotics (Summer 2026)
+- Designed RTL modules in SystemVerilog for a motor-control FPGA; closed timing at 200 MHz.
+- Brought up a custom PCB (Altium), debugged SPI/I2C buses with a logic analyzer.
+
+Undergraduate Research Assistant — NU Embedded Systems Lab (2025–present)
+- Wrote bare-metal firmware (Embedded C) for an STM32 sensor node with FreeRTOS.
+- Implemented an FFT-based DSP pipeline for real-time vibration analysis.
+
+PROJECTS
+FPGA Beamforming Mic Array — Implemented a Verilog beamforming pipeline on a
+  Xilinx FPGA for an 8-microphone array; real-time audio DSP.
+BLDC Motor Driver — Designed power-electronics board (gate drivers, current
+  sensing) and firmware for field-oriented control of a brushless DC motor.
+RISC-V Core — Built a pipelined RISC-V CPU in SystemVerilog, verified with UVM.

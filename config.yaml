@@ -1,0 +1,165 @@
+# =============================================================================
+# Resume-Aware Internship Finder — default configuration
+# =============================================================================
+# Everything here can be overridden on the CLI (see `python main.py --help`).
+# Edit freely. Wrong/stale ATS slugs are harmless: a 404 just yields no rows and
+# is logged so you can prune the list.
+
+# ---- Search targeting -------------------------------------------------------
+search:
+  term: "Summer 2027"          # target internship term (today is the 2027 cycle)
+  # Role keywords. The resume parser AUGMENTS this list with what it finds in
+  # your resume; this is the always-on baseline floor for a hardware/embedded bias.
+  role_keywords:
+    - intern
+    - internship
+    - co-op
+    - "summer 2027"
+  locations:                    # empty list = no location filter
+    - United States
+    - Remote
+  remote_preference: any        # any | remote | hybrid | onsite
+
+# ---- Freshness windows (Section 3.3 / 6) -----------------------------------
+freshness:
+  recency_days: 21              # "posted within last N days" qualifies
+  deadline_lookahead_days: 14   # "deadline within next N days" qualifies
+  live_check: true              # re-verify every retained URL before reporting (Section 6.4)
+  live_check_timeout: 12        # seconds per live-check request
+  include_unverified: true      # keep listings whose date can't be verified, flagged + sorted below
+
+# ---- HTTP politeness (Section 12) ------------------------------------------
+http:
+  user_agent: "internfinder/1.0 (+personal-job-search; contact: set-in-config)"
+  request_timeout: 20
+  rate_limit_per_host_sec: 1.0  # min seconds between requests to the same host
+  max_retries: 3
+  backoff_base_sec: 1.5         # exponential backoff base
+  respect_robots: true          # skip disallowed paths
+
+# ---- Matching / scoring (Section 7) ----------------------------------------
+matching:
+  use_llm: auto                 # auto (use Claude if ANTHROPIC_API_KEY set) | always | never
+  llm_model: "claude-haiku-4-5" # cheap + fast for per-listing scoring; bump to sonnet for quality
+  llm_max_listings: 60          # cap LLM calls per run to control cost
+  min_score_to_report: 25       # drop listings scoring below this
+
+# ---- Sources ----------------------------------------------------------------
+# Tier 1 (most date-reliable). Seed slugs are HARDWARE / SEMICONDUCTOR / ROBOTICS
+# biased and are STARTING POINTS — verify/extend them. Find a company's slug by
+# opening its careers page: boards.greenhouse.io/<slug>, jobs.lever.co/<slug>,
+# jobs.ashbyhq.com/<slug>.
+sources:
+  greenhouse:
+    enabled: true
+    # boards.greenhouse.io/<slug>. These slugs were verified live (2026) — prune
+    # any that stop returning intern roles; add your own the same way.
+    companies:
+      - andurilindustries # defense hardware
+      - astranis          # satellites
+      - relativity        # aerospace / 3D-printed rockets
+      - archer            # eVTOL aircraft
+      - figure            # humanoid robots
+      - figureai          # humanoid robots (alt board)
+      - agilityrobotics   # humanoid robots
+      - neuralink         # neural interface hardware
+      - tenstorrent       # AI / RISC-V chips
+      - sambanovasystems  # AI chips
+      - lightmatter       # photonic computing
+      - nuro              # autonomous vehicles
+      - kodiak            # autonomous trucking
+      - waymo             # autonomous vehicles
+
+  lever:
+    enabled: true
+    # jobs.lever.co/<slug>  (verified live)
+    companies:
+      - shieldai          # autonomy / defense
+      - zoox              # autonomous vehicles
+      - saronic           # autonomous maritime
+
+  ashby:
+    enabled: true
+    # jobs.ashbyhq.com/<slug>  (verified live)
+    companies:
+      - physicalintelligence   # robotics foundation models
+      - 1x                     # humanoid robots
+      - etched                 # transformer ASICs
+      - extropic               # thermodynamic computing chips
+      - base-power             # power / battery hardware
+      - crusoe                 # energy + compute infrastructure
+
+  # Arbitrary career-page URLs to scrape for schema.org JobPosting JSON-LD
+  # (Section 4 Tier 1, item 2). Most reliable date source when present.
+  schemaorg_urls:
+    enabled: true
+    urls: []                    # add direct career-page or listing URLs here
+
+  # Tier 1, item 3 — community-curated tracking repos. Freshness gold because
+  # maintainers manually mark closures. Repo last-commit date is checked first;
+  # a stale repo is skipped. {raw README is parsed as a markdown table}.
+  github_lists:
+    enabled: true
+    repos:
+      # owner/repo  — the README must contain a markdown table of listings.
+      - vanshb03/Summer2027-Internships
+      - SimplifyJobs/Summer2027-Internships
+    max_commit_age_days: 14     # skip repo if no commits within this window
+
+  # Tier 2 — startup-specific.
+  yc_jobs:
+    enabled: true
+    # Filter YC company directory toward hardware/robotics/deep-tech industries.
+    industries:
+      - Hardware
+      - Robotics
+      - Semiconductors
+      - Aerospace
+      - Climate
+      - Energy
+    max_companies: 40           # cap how many YC company ATS boards to probe
+
+  wellfound:
+    enabled: false              # requires login/official access; off by default (Section 12)
+
+  # Tier 3 — general aggregator for breadth (weighted lower on trust).
+  serpapi_google_jobs:
+    enabled: true               # auto-skips if SERPAPI_API_KEY is unset
+    max_results: 40
+
+# ---- Domain weighting (Section 10) -----------------------------------------
+# Exact matches on these score highest. The matcher also expands via synonyms
+# (see internfinder/domain.py). Tune to taste.
+domain:
+  priority_keywords:
+    - FPGA
+    - RTL
+    - Verilog
+    - SystemVerilog
+    - VHDL
+    - ASIC
+    - digital design
+    - embedded systems
+    - firmware
+    - power electronics
+    - PCB design
+    - signal processing
+    - DSP
+    - RF
+    - robotics
+  priority_sectors:
+    - semiconductor
+    - chip design
+    - robotics
+    - audio hardware
+    - beamforming
+    - EV
+    - battery
+    - power electronics
+    - aerospace
+    - automotive
+
+# ---- Output -----------------------------------------------------------------
+output:
+  format: markdown              # markdown | html | both
+  directory: reports

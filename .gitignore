@@ -1,0 +1,23 @@
+# Virtualenv
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Local cache + generated reports
+cache.db
+cache.db-journal
+reports/
+*.log
+
+# Secrets / local env
+.env
+*.local.yaml
+
+# OS
+Thumbs.db
+.DS_Store
