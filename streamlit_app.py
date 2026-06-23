@@ -108,6 +108,15 @@ st.markdown(
       div[data-baseweb="select"]>div, .stTextInput input, .stNumberInput input {
         background:var(--surface-3) !important; border-color:var(--line) !important; color:var(--text) !important; }
       .stFileUploader section { border:1px dashed var(--line-strong); background:var(--surface-3); }
+      label[data-baseweb="radio"] > div:first-child {
+        background:transparent !important; border:1px solid var(--line-strong) !important; box-shadow:none !important; }
+      label[data-baseweb="radio"] > div:first-child > div {
+        background:transparent !important; }
+      label[data-baseweb="radio"]:has(input[type="radio"]:checked) > div:first-child {
+        background:var(--accent) !important; border-color:var(--accent-strong) !important; }
+      label[data-baseweb="radio"]:has(input[type="radio"]:checked) > div:first-child > div {
+        background:var(--accent-ink) !important; }
+      label[data-baseweb="radio"] p { color:var(--text) !important; }
 
       /* Privacy note — quiet trust row */
       .privacy { color:var(--muted-2); font-size:.82rem; text-align:left; margin:.5rem 0 0; }
@@ -204,7 +213,7 @@ st.markdown(
 
 
 # ----------------------------------------------------------------- run pipeline
-def _run(data: bytes, filename: str, *, term, target_role, recency_days,
+def _run(data: bytes, filename: str, *, term, target_role, remote_preference, recency_days,
          deadline_days, live_check, llm_mode, llm_provider) -> None:
     suffix = Path(filename).suffix or ".txt"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
@@ -215,6 +224,7 @@ def _run(data: bytes, filename: str, *, term, target_role, recency_days,
     apply_overrides(config, {
         "search.term": term,
         "search.target_role": target_role,
+        "search.remote_preference": remote_preference,
         "freshness.recency_days": recency_days,
         "freshness.deadline_lookahead_days": deadline_days,
         "freshness.live_check": live_check,
@@ -263,6 +273,12 @@ _AI_OPTIONS = {
     "Claude": ("always", "anthropic"),
     "Keyword only": ("never", "auto"),
 }
+_WORK_MODE_OPTIONS = {
+    "Any work mode": "any",
+    "Remote": "remote",
+    "Hybrid": "hybrid",
+    "On-site": "onsite",
+}
 
 with st.container(border=True):
     st.markdown("#### 1 · Your resume")
@@ -275,12 +291,13 @@ with st.container(border=True):
     st.markdown("#### 2 · What are you looking for?")
     broad_web_on = bool(os.getenv("SERPAPI_API_KEY"))
     open_weight_on = bool(os.getenv("OPENROUTER_API_KEY"))
+    startup_web = "broad + YC" if broad_web_on else "YC only"
     st.markdown(
         f"""
         <div class="search-meta">
           <div class="item"><span>Broad web</span><b class="{'ok' if broad_web_on else 'warn'}">{'on' if broad_web_on else 'needs key'}</b></div>
           <div class="item"><span>Preset boards</span><b>off</b></div>
-          <div class="item"><span>Startup jobs</span><b>YC public profiles</b></div>
+          <div class="item"><span>Startup web</span><b>{startup_web}</b></div>
           <div class="item"><span>Open-weight AI</span><b class="{'ok' if open_weight_on else 'warn'}">{'GLM 5.2' if open_weight_on else 'needs key'}</b></div>
         </div>
         """,
@@ -297,6 +314,14 @@ with st.container(border=True):
         help="Any field — this drives the search and ranks matches. "
              "Leave blank and we'll infer it from your resume.",
     ).strip()
+    work_mode_choice = st.radio(
+        "Preferred work mode",
+        list(_WORK_MODE_OPTIONS),
+        index=0,
+        horizontal=True,
+        help="Used in the broad web/startup search query. You can still filter final results below.",
+    )
+    remote_preference = _WORK_MODE_OPTIONS[work_mode_choice]
 
     with st.expander("Advanced search options"):
         recency_days = st.number_input("Posted within (days)", 1, 365, 21, 1)
@@ -318,6 +343,7 @@ with st.container(border=True):
 
 if run_clicked and upload is not None:
     _run(upload.getvalue(), upload.name, term=term, target_role=target_role,
+         remote_preference=remote_preference,
          recency_days=recency_days, deadline_days=deadline_days,
          live_check=live_check, llm_mode=llm_mode, llm_provider=llm_provider)
 

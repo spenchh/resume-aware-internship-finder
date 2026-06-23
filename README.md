@@ -21,9 +21,9 @@ those candidates, but nothing assumes you're an engineer.
 ## 🌐 Use it on the web (no install — just upload your resume)
 
 The entire tool runs in the browser via **`streamlit_app.py`**: upload a resume,
-click **Find internships**, and it parses, searches, live-verifies, scores, and
-lists the results — with filters and downloadable reports. Nothing to install for
-whoever uses it.
+choose your role focus and preferred work mode, click **Find internships**, and
+it parses, searches, live-verifies, scores, and lists the results — with filters
+and downloadable reports. Nothing to install for whoever uses it.
 
 **Deploy your own copy (free, ~3 minutes):**
 
@@ -87,7 +87,8 @@ copy .env.example .env                         # then fill in keys you have
 - `OPENROUTER_API_KEY` → enables open-weight AI match scoring through OpenRouter
   using `z-ai/glm-5.2` by default.
 - `ANTHROPIC_API_KEY` → optional Claude fallback scoring if OpenRouter is not set.
-- `SERPAPI_API_KEY` → enables the Google Jobs breadth source.
+- `SERPAPI_API_KEY` → enables the Google Jobs breadth source, including broad
+  startup web queries beyond YC.
 - `GITHUB_TOKEN` → higher GitHub API rate limit for curated-list freshness checks.
 
 The tool runs fully without any of these.

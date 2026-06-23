@@ -132,10 +132,10 @@ class TestSerpApiSource(unittest.TestCase):
 
         class FakeHttp:
             def __init__(self):
-                self.params = None
+                self.params_list = []
 
             def get(self, _url, params=None, obey_robots=True):
-                self.params = params
+                self.params_list.append(params)
                 return FakeResponse()
 
         http = FakeHttp()
@@ -151,7 +151,105 @@ class TestSerpApiSource(unittest.TestCase):
             rows = job_search_api.fetch(ctx)
 
         self.assertEqual(rows, [])
-        self.assertEqual(http.params["q"], "internship")
+        self.assertEqual(http.params_list[0]["q"], "internship")
+        self.assertIn("startup internship", [p["q"] for p in http.params_list])
+
+    def test_remote_preference_and_startup_terms_feed_queries(self):
+        class FakeResponse:
+            ok = True
+
+            def json(self):
+                return {"jobs_results": []}
+
+        class FakeHttp:
+            def __init__(self):
+                self.queries = []
+
+            def get(self, _url, params=None, obey_robots=True):
+                self.queries.append(params["q"])
+                return FakeResponse()
+
+        http = FakeHttp()
+        ctx = base.SourceContext(
+            http=http,
+            config={
+                "search": {
+                    "term": "Fall 2026",
+                    "target_role": "finance",
+                    "remote_preference": "remote",
+                    "locations": ["United States"],
+                },
+                "domain": {"priority_keywords": []},
+                "sources": {
+                    "serpapi_google_jobs": {
+                        "enabled": True,
+                        "max_results": 12,
+                        "startup_breadth": True,
+                        "startup_query_terms": [
+                            "startup internship",
+                            "venture backed startup internship",
+                        ],
+                    }
+                },
+            },
+        )
+        with patch.dict("os.environ", {"SERPAPI_API_KEY": "test"}, clear=False):
+            rows = job_search_api.fetch(ctx)
+
+        self.assertEqual(rows, [])
+        self.assertEqual(
+            http.queries,
+            [
+                "finance internship Fall 2026 remote",
+                "finance startup internship Fall 2026 remote",
+                "finance venture backed startup internship Fall 2026 remote",
+            ],
+        )
+
+    def test_startup_queries_mark_listings_as_startups(self):
+        class FakeResponse:
+            ok = True
+
+            def json(self):
+                return {
+                    "jobs_results": [
+                        {
+                            "title": "Marketing Intern",
+                            "company_name": "Seedly",
+                            "location": "Remote",
+                            "description": "Remote internship with a small startup.",
+                            "via": "Google",
+                            "apply_options": [{"link": "https://seedly.example/jobs/intern"}],
+                        }
+                    ]
+                }
+
+        class FakeHttp:
+            def get(self, _url, params=None, obey_robots=True):
+                return FakeResponse()
+
+        ctx = base.SourceContext(
+            http=FakeHttp(),
+            config={
+                "search": {"term": "", "target_role": "marketing", "locations": ["United States"]},
+                "domain": {"priority_keywords": []},
+                "sources": {
+                    "serpapi_google_jobs": {
+                        "enabled": True,
+                        "max_results": 2,
+                        "startup_breadth": True,
+                        "startup_query_terms": ["startup internship"],
+                    }
+                },
+            },
+        )
+        with patch.dict("os.environ", {"SERPAPI_API_KEY": "test"}, clear=False):
+            rows = job_search_api.fetch(ctx)
+
+        self.assertEqual(len(rows), 2)
+        self.assertIsNone(rows[0].is_startup)
+        self.assertTrue(rows[1].is_startup)
+        self.assertEqual(rows[1].raw["serpapi_query"], "marketing startup internship")
 
 
 class TestYCStartupSource(unittest.TestCase):

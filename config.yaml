@@ -103,7 +103,14 @@ sources:
   # Tier 3 — general aggregator for breadth (weighted lower on trust).
   serpapi_google_jobs:
     enabled: true               # auto-skips if SERPAPI_API_KEY is unset
-    max_results: 100
+    max_results: 100            # total rows kept across all SerpAPI query variants
+    max_locations: 2            # first N configured locations to query
+    startup_breadth: true       # add web-wide startup searches beyond YC
+    startup_query_terms:
+      - startup internship
+      - early stage startup internship
+      - small startup internship
+      - venture backed startup internship
 
 # ---- Optional domain weighting ---------------------------------------------
 # Empty by default so the tool does not favor engineering, hardware, software,
