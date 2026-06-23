@@ -34,7 +34,7 @@ from internfinder.config import apply_overrides, load_config, load_env
 
 TODAY = datetime.now(timezone.utc).date()
 
-st.set_page_config(page_title="Internship Finder", layout="centered")
+st.set_page_config(page_title="Internship Finder", layout="wide")
 load_env()
 
 
@@ -44,73 +44,105 @@ st.markdown(
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-      /* ---- Flat dark palette --------------------------------------------
-         bg #0E1117 · surface #161B22 · raised #1C2230 · border #2A313C
-         text #E6E8EB · muted #9BA3AF · accent #2F81F7
-         live #3FB950 · approx #D29922 · risk #F85149                       */
+      /* Matte dark palette: charcoal surfaces, warm off-white text, sage accent. */
+      :root {
+        --bg:#0C0D0E;
+        --surface:#141518;
+        --surface-2:#191B1E;
+        --surface-3:#101113;
+        --line:#2A2D31;
+        --line-strong:#373A3F;
+        --text:#EEECE7;
+        --muted:#A7A29A;
+        --muted-2:#7F7B74;
+        --accent:#9AA894;
+        --accent-strong:#B6C1AE;
+        --accent-ink:#151912;
+        --warn:#C2A66D;
+        --risk:#C9857F;
+      }
       html, body, .stApp, button, input, textarea, select,
       [class*="css"] { font-family:'Inter', sans-serif !important; }
 
-      .stApp { background:#08090C; color:#F4F7FA; }
-      .block-container { padding-top: 2.1rem; max-width: 880px; }
+      html, body, .stApp { overflow-x:hidden; }
+      .stApp { background:var(--bg); color:var(--text); }
+      .block-container {
+        width:min(100%, 70rem);
+        max-width:min(70rem, calc(100vw - 2rem));
+        padding:2.1rem clamp(.75rem, 2.5vw, 1.5rem) 3rem;
+        margin-inline:auto;
+      }
 
       /* Hero */
-      .hero { text-align:left; margin: .15rem 0 1rem; }
-      .hero h1 { font-size: 2.45rem; font-weight: 800; letter-spacing:0;
-                 color:#F4F7FA; margin-bottom:.45rem; }
-      .hero p { color:#A7B0BC; font-size:1.02rem; max-width:690px; margin:.2rem 0 0; line-height:1.65; }
-      .hero p b { color:#F4F7FA; font-weight:700; }
+      .hero { text-align:left; margin:.15rem 0 1.05rem; }
+      .hero h1 { font-size:2.35rem; font-weight:760; letter-spacing:0;
+                 color:var(--text); margin-bottom:.45rem; }
+      .hero p { color:var(--muted); font-size:1rem; max-width:44rem; margin:.2rem 0 0; line-height:1.68; }
+      .hero p b { color:var(--text); font-weight:680; }
 
       /* Benefit chips — flat, thin border */
-      .chips { display:flex; gap:.55rem; justify-content:flex-start; flex-wrap:wrap; margin:1rem 0 .65rem; }
-      .chip { background:#101218; border:1px solid #252A35; border-radius:8px; padding:.52rem .82rem;
-              font-size:.84rem; color:#A7B0BC; box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
-      .chip b { color:#F4F7FA; font-weight:700; }
+      .chips { display:flex; gap:.55rem; justify-content:flex-start; flex-wrap:wrap; margin:1rem 0 .7rem; }
+      .chip { background:var(--surface-3); border:1px solid var(--line); border-radius:7px; padding:.52rem .8rem;
+              font-size:.84rem; color:var(--muted); }
+      .chip b { color:var(--text); font-weight:680; }
 
       /* Panels (upload + result cards) — flat surface, thin border */
       div[data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius:10px !important; border:1px solid #252A35 !important;
-        background:linear-gradient(180deg, #111318 0%, #0D0F14 100%);
-        box-shadow:0 18px 48px rgba(0,0,0,.28); }
+        border-radius:8px !important; border:1px solid var(--line) !important;
+        background:var(--surface); box-shadow:none; }
 
       /* Buttons — flat */
       .stButton>button, .stDownloadButton>button, .stLinkButton>a {
-        border-radius:8px !important; font-weight:700; border:1px solid #2D3440;
-        background:#171A21; color:#F4F7FA; min-height:2.55rem; }
+        border-radius:7px !important; font-weight:680; border:1px solid var(--line-strong);
+        background:var(--surface-2); color:var(--text); min-height:2.55rem; }
       .stButton>button:hover, .stDownloadButton>button:hover, .stLinkButton>a:hover {
-        border-color:#21C7A8; color:#FFFFFF; }
+        border-color:var(--accent); color:var(--text); background:#1E211F; }
       .stButton>button[kind="primary"] {
-        background:#21C7A8; border:1px solid #21C7A8; color:#03110F; }
-      .stButton>button[kind="primary"]:hover { background:#35D399; border-color:#35D399; color:#03110F; }
+        background:var(--accent); border:1px solid var(--accent); color:var(--accent-ink); }
+      .stButton>button[kind="primary"]:hover {
+        background:var(--accent-strong); border-color:var(--accent-strong); color:var(--accent-ink); }
 
       /* Inputs */
       div[data-baseweb="select"]>div, .stTextInput input, .stFileUploader section {
-        border-radius:8px !important; }
+        border-radius:7px !important; }
       div[data-baseweb="select"]>div, .stTextInput input {
-        background:#0B0D11 !important; border-color:#252A35 !important; color:#F4F7FA !important; }
-      .stFileUploader section { border:1px dashed #2D3440; background:#0B0D11; }
+        background:var(--surface-3) !important; border-color:var(--line) !important; color:var(--text) !important; }
+      .stFileUploader section { border:1px dashed var(--line-strong); background:var(--surface-3); }
 
       /* Privacy note — quiet trust row */
-      .privacy { color:#7E8794; font-size:.82rem; text-align:left; margin:.5rem 0 0; }
-      .search-meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.55rem; margin:.55rem 0 1rem; }
-      .search-meta .item { border:1px solid #252A35; border-radius:8px; background:#0B0D11; padding:.58rem .68rem; }
-      .search-meta span { display:block; color:#7E8794; font-size:.74rem; line-height:1.2; }
-      .search-meta b { display:block; color:#F4F7FA; font-size:.9rem; line-height:1.35; margin-top:.12rem; }
-      .search-meta b.ok { color:#35D399; }
-      .search-meta b.warn { color:#F6C453; }
+      .privacy { color:var(--muted-2); font-size:.82rem; text-align:left; margin:.5rem 0 0; }
+      .search-meta {
+        display:grid;
+        grid-template-columns:repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+        gap:.55rem;
+        margin:.55rem 0 1rem;
+      }
+      .search-meta .item { border:1px solid var(--line); border-radius:7px; background:var(--surface-3); padding:.58rem .68rem; }
+      .search-meta span { display:block; color:var(--muted-2); font-size:.74rem; line-height:1.2; }
+      .search-meta b { display:block; color:var(--text); font-size:.9rem; line-height:1.35; margin-top:.12rem; }
+      .search-meta b.ok { color:var(--accent-strong); }
+      .search-meta b.warn { color:var(--warn); }
 
       /* Score badge + status pills on result cards */
-      .badge { display:inline-block; background:#16231F; color:#35D399; font-weight:700;
-               border:1px solid #245C51; border-radius:6px; padding:.12rem .55rem; font-size:.82rem; }
+      .badge { display:inline-block; background:#1D221C; color:var(--accent-strong); font-weight:680;
+               border:1px solid #3A4636; border-radius:6px; padding:.12rem .55rem; font-size:.82rem; }
       .pill  { display:inline-block; border-radius:6px; padding:.1rem .5rem; font-size:.74rem;
-               margin-right:.35rem; border:1px solid #252A35; color:#A7B0BC; background:#0B0D11; }
-      .legend { font-size:.8rem; color:#A7B0BC; }
-      .company { font-weight:700; font-size:1.05rem; color:#F4F7FA; }
-      .title   { color:#A7B0BC; font-size:.95rem; }
-      @media (max-width: 680px) {
-        .block-container { padding-top: 1.2rem; }
-        .hero h1 { font-size: 2rem; }
-        .search-meta { grid-template-columns:1fr; }
+               margin-right:.35rem; border:1px solid var(--line); color:var(--muted); background:var(--surface-3); }
+      .legend { font-size:.8rem; color:var(--muted); }
+      .company { font-weight:680; font-size:1.05rem; color:var(--text); }
+      .title   { color:var(--muted); font-size:.95rem; }
+      @media (min-width: 1180px) {
+        .block-container { width:min(76vw, 70rem); }
+      }
+      @media (max-width: 760px) {
+        .block-container { max-width:calc(100vw - 1rem); padding-top:1.2rem; }
+        .hero h1 { font-size:2rem; }
+      }
+      @media (max-width: 420px) {
+        .block-container { padding-left:.5rem; padding-right:.5rem; }
+        .hero h1 { font-size:1.85rem; }
+        .hero p { font-size:.96rem; }
+        .chip { padding:.48rem .7rem; }
       }
       footer, #MainMenu, [data-testid="stToolbar"] { visibility:hidden; }
       header[data-testid="stHeader"] { background:transparent; }
@@ -121,15 +153,15 @@ st.markdown(
 
 # Status shown as colored text — no emoji. (label, color)
 _CONF_TEXT = {
-    "verified": ("verified", "#35D399"),
-    "approximate": ("approx.", "#F6C453"),
-    "unverified": ("unverified", "#FF6B7A"),
+    "verified": ("verified", "#B6C1AE"),
+    "approximate": ("approx.", "#C2A66D"),
+    "unverified": ("unverified", "#C9857F"),
 }
 _LIVE_TEXT = {
-    "live": ("live", "#35D399"),
-    "unknown": ("unconfirmed", "#F6C453"),
-    "dead": ("closed", "#FF6B7A"),
-    "not_checked": ("not checked", "#7E8794"),
+    "live": ("live", "#B6C1AE"),
+    "unknown": ("unconfirmed", "#C2A66D"),
+    "dead": ("closed", "#C9857F"),
+    "not_checked": ("not checked", "#7F7B74"),
 }
 
 
@@ -295,11 +327,11 @@ st.success(
 # Legend so the status colors are never something to guess at.
 st.markdown(
     '<p class="legend">Date: '
-    + _status("verified", "#35D399") + " / " + _status("approx.", "#F6C453")
-    + " / " + _status("unverified", "#FF6B7A")
+    + _status("verified", "#B6C1AE") + " / " + _status("approx.", "#C2A66D")
+    + " / " + _status("unverified", "#C9857F")
     + " &nbsp;|&nbsp; Live status: "
-    + _status("live", "#35D399") + " / " + _status("unconfirmed", "#F6C453")
-    + " / " + _status("closed", "#FF6B7A") + "</p>",
+    + _status("live", "#B6C1AE") + " / " + _status("unconfirmed", "#C2A66D")
+    + " / " + _status("closed", "#C9857F") + "</p>",
     unsafe_allow_html=True)
 
 # ----- downloads -----
