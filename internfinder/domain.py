@@ -1,10 +1,9 @@
-"""Hardware / digital-design / embedded domain knowledge.
+"""Term extraction and optional domain synonym knowledge.
 
 Two jobs:
-  1. A lexicon of tech terms used to *extract* skills from resume + JD text.
-  2. A synonym/adjacency map used to *expand* matches so that, e.g., a resume
-     listing "Verilog" still matches a JD that only says "RTL" or "HDL"
-     (spec Section 3.1 + 10).
+  1. Generic term extraction for resumes and job descriptions in any field.
+  2. Optional synonym/adjacency expansion for specialized domains, so a resume
+     listing "Verilog" still matches a JD that only says "RTL" or "HDL".
 
 Keys are canonical lowercase terms; values are adjacent terms that should count
 as (slightly discounted) matches. Expansion is bidirectional at load time.
@@ -15,8 +14,8 @@ from __future__ import annotations
 import re
 
 
-# Canonical term -> adjacent/equivalent terms. Curated for the hardware/embedded
-# domain the user cares about (Section 10). Bidirectional links are built below.
+# Canonical term -> adjacent/equivalent terms. Curated for hardware/embedded
+# matching when those terms appear; not used as a source or field filter.
 _SYNONYM_SEED: dict[str, list[str]] = {
     # --- HDL / digital design ---
     "verilog": ["rtl", "hdl", "digital design", "systemverilog", "rtl design"],
@@ -214,11 +213,10 @@ def extract_known_terms(text: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Field-AGNOSTIC extraction. The lexicon above is hardware-biased; this lets the
-# tool match ANY field (marketing, finance, biology, design, nursing, law, …) by
-# pulling meaningful terms straight out of the resume text instead of a fixed
-# vocabulary. Used in addition to extract_known_terms so domain folks keep their
-# synonym expansion while everyone else still gets matched.
+# Field-AGNOSTIC extraction. This lets the tool match any field by pulling
+# meaningful terms straight out of the resume text instead of a fixed vocabulary.
+# Used in addition to extract_known_terms so specialized synonym expansion still
+# works when those terms appear.
 # ---------------------------------------------------------------------------
 
 # Common English + resume-boilerplate words we never want as "skills".

@@ -83,8 +83,20 @@ def html_to_text(html_str: str) -> str:
 
 
 def extract_requirements(text: str, limit: int = 18) -> list[str]:
-    """Pull the recognizable tech-stack/requirement terms out of a JD."""
-    return domain.extract_known_terms(text)[:limit]
+    """Pull recognizable requirement terms out of a JD for any field."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for term in domain.extract_known_terms(text):
+        if term not in seen:
+            seen.add(term)
+            out.append(term)
+    for term in domain.extract_generic_terms(text, top_n=limit * 2):
+        if term not in seen:
+            seen.add(term)
+            out.append(term)
+        if len(out) >= limit:
+            break
+    return out[:limit]
 
 
 def parse_date_loose(value) -> Optional[date]:

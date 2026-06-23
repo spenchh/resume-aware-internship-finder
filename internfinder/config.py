@@ -71,7 +71,7 @@ def _deep_merge(base: dict, overlay: dict) -> dict:
 # missing or partial. config.yaml (when present) wins.
 _DEFAULTS: dict[str, Any] = {
     "search": {
-        "term": "Summer 2027",
+        "term": "",
         "target_role": "",  # candidate's stated field/roles; drives web-wide search + scoring
         "role_keywords": ["intern", "internship", "co-op"],
         "locations": ["United States", "Remote"],
@@ -96,7 +96,7 @@ _DEFAULTS: dict[str, Any] = {
         "use_llm": "auto",
         "llm_model": "claude-haiku-4-5",
         "llm_max_listings": 60,
-        "min_score_to_report": 25,
+        "min_score_to_report": 0,
     },
     "sources": {
         "greenhouse": {"enabled": True, "companies": []},
@@ -104,9 +104,20 @@ _DEFAULTS: dict[str, Any] = {
         "ashby": {"enabled": True, "companies": []},
         "schemaorg_urls": {"enabled": True, "urls": []},
         "github_lists": {"enabled": True, "repos": [], "max_commit_age_days": 14},
-        "yc_jobs": {"enabled": True, "industries": [], "max_companies": 40},
+        "yc_jobs": {
+            "enabled": True,
+            "selectors": [],
+            "industries": [],
+            "active_only": True,
+            "hiring_only": True,
+            "profile_first": True,
+            "skip_ats_when_profile_has_jobs": True,
+            "small_team_max": 50,
+            "recent_batch_year_min": 2020,
+            "max_companies": 40,
+        },
         "wellfound": {"enabled": False},
-        "serpapi_google_jobs": {"enabled": True, "max_results": 40},
+        "serpapi_google_jobs": {"enabled": True, "max_results": 100},
     },
     "domain": {"priority_keywords": [], "priority_sectors": []},
     "output": {"format": "markdown", "directory": "reports"},

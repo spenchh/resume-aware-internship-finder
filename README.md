@@ -148,8 +148,8 @@ resume ─▶ resume_parser ─▶ weighted keywords (+ synonym expansion)
 
 | Module | Responsibility |
 |---|---|
-| `internfinder/resume_parser.py` | Extract skills/tools/coursework/degree/titles; build weighted keyword map with hardware synonym expansion (Verilog→RTL/HDL/digital design). |
-| `internfinder/domain.py` | Hardware/embedded lexicon + synonym graph. |
+| `internfinder/resume_parser.py` | Extract skills/tools/coursework/degree/titles; build a field-agnostic weighted keyword map from the resume and optional target focus. |
+| `internfinder/domain.py` | Generic term extraction plus optional domain synonym expansion when specialized terms appear. |
 | `internfinder/sources/*` | One fetcher per source. Each fails soft. |
 | `internfinder/freshness_validator.py` | **The core** — date resolution, eligibility windows, live-check, dedup. |
 | `internfinder/matcher.py` | 0–100 match scoring (keyword or Claude). |
@@ -161,24 +161,28 @@ resume ─▶ resume_parser ─▶ weighted keywords (+ synonym expansion)
 
 ## Data sources (ranked by date-reliability)
 
-**Tier 1 — most reliable (build on these):**
+**Tier 1 — most reliable when explicitly configured:**
 - **Greenhouse / Lever / Ashby** public JSON board APIs. Structured post dates
   (`updated_at` / `createdAt` / `publishedAt`); a closed role 404s or disappears,
   which makes freshness trivial to confirm. Configure company slugs in
-  `config.yaml` — the defaults are *verified-live hardware/deep-tech* boards
-  (Anduril, Figure, Relativity, Tenstorrent, Lightmatter, Neuralink, Shield AI,
-  Zoox, Physical Intelligence, 1X, Etched, …).
+  `config.yaml` only when you intentionally want specific boards. The default
+  lists are empty so the app does not secretly favor one field or company set.
 - **schema.org JobPosting JSON-LD** — point `schemaorg_urls` at any career page;
   `datePosted`/`validThrough` are the most reliable date fields available.
 - **Curated GitHub tracking repos** — README tables where maintainers mark
-  closures. The repo's last-commit date is checked first; a stale repo is skipped.
+  closures. The default repo list is empty; add repos only when you want that
+  specific community list. The repo's last-commit date is checked first; a stale
+  repo is skipped.
 
-**Tier 2 — startup-specific:** YC (`yc_jobs`, hardware/robotics-filtered via the
-public YC dataset, then probes each company's ATS board), Wellfound (off by
-default; ToS-respecting user-export only).
+**Tier 2 — startup-specific:** YC (`yc_jobs`, broad public YC company dataset by
+default, ranked toward active/hiring/small/recent companies, then public YC
+profile jobs and ATS boards), Wellfound (off by default; ToS-respecting
+user-export only).
 
-**Tier 3 — breadth, lower trust:** SerpAPI Google Jobs (relative dates only,
-always labeled *approximate*; auto-skips without a key).
+**Tier 3 — broad web search, lower date trust:** SerpAPI Google Jobs. This is the
+main "search the internet broadly" source: query = internship + optional role
+focus + optional term. Relative dates are always labeled *approximate*; the
+source auto-skips without `SERPAPI_API_KEY`.
 
 > LinkedIn is intentionally **not** scraped (ToS). robots.txt is respected on
 > every host; requests are rate-limited per host with retry/backoff.
@@ -219,7 +223,7 @@ Each listing reports (Section 8 of the spec): company + one-line description,
 startup flag + funding stage (best-effort), role title + level, location +
 remote/hybrid/onsite, **posted date with confidence label**, deadline (or
 "rolling"), **live-check status + timestamp**, source + direct apply link,
-extracted tech stack, and match score + matched/missing skills + rationale.
+extracted requirements/skills, and match score + matched/missing skills + rationale.
 
 The report is sorted by deadline urgency then match score, and **separates
 verified-date listings from unverified-date listings** so that distinction is
@@ -240,7 +244,8 @@ All behavior is in `config.yaml` (every value is CLI-overridable). Key sections:
 `search` (term, role keywords, locations), `freshness` (windows + live-check),
 `http` (politeness), `matching` (LLM model/mode, min score), `sources`
 (per-source enable + slugs/repos/urls), `domain` (priority keywords/sectors),
-`output`. See the inline comments in `config.yaml`.
+`output`. Defaults intentionally avoid preset company boards, curated repo lists,
+and YC sector selectors; see the inline comments in `config.yaml`.
 
 **Adding company boards:** open a company's careers page and read the slug from
 the URL — `boards.greenhouse.io/<slug>`, `jobs.lever.co/<slug>`,
@@ -276,7 +281,7 @@ rendering.
 
 | Symptom | Fix |
 |---|---|
-| "No listings fetched" | Check `--sources`, verify slugs in `config.yaml`, confirm connectivity. Run with `-v`. |
+| "No listings fetched" | For broad web search, set `SERPAPI_API_KEY`; otherwise add source slugs/repos/URLs or enable a source with public listings. Run with `-v`. |
 | Few/zero results | The recency window may be tight for the current cycle — widen `--recency-days`, or check that boards have intern roles posted yet. |
 | Scanned-PDF resume parses empty | Export a text-based PDF or DOCX (image-only PDFs have no extractable text). |
 | LLM scoring not used | Set `ANTHROPIC_API_KEY` and `pip install anthropic`; or `--llm always` to see the warning reason. |

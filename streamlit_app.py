@@ -42,62 +42,78 @@ load_env()
 st.markdown(
     """
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
       /* ---- Flat dark palette --------------------------------------------
          bg #0E1117 · surface #161B22 · raised #1C2230 · border #2A313C
          text #E6E8EB · muted #9BA3AF · accent #2F81F7
          live #3FB950 · approx #D29922 · risk #F85149                       */
       html, body, .stApp, button, input, textarea, select,
-      [class*="css"] { font-family:'Lato', sans-serif !important; }
+      [class*="css"] { font-family:'Inter', sans-serif !important; }
 
-      .stApp { background:#0E1117; }
-      .block-container { padding-top: 2.2rem; max-width: 820px; }
+      .stApp { background:#08090C; color:#F4F7FA; }
+      .block-container { padding-top: 2.1rem; max-width: 880px; }
 
       /* Hero */
-      .hero { text-align:center; margin-bottom: 1.1rem; }
-      .hero h1 { font-size: 2.1rem; font-weight: 900; letter-spacing:-.01em;
-                 color:#E6E8EB; margin-bottom:.3rem; }
-      .hero p { color:#9BA3AF; font-size:1.0rem; max-width:560px; margin:.2rem auto 0; }
-      .hero p b { color:#E6E8EB; font-weight:700; }
+      .hero { text-align:left; margin: .15rem 0 1rem; }
+      .hero h1 { font-size: 2.45rem; font-weight: 800; letter-spacing:0;
+                 color:#F4F7FA; margin-bottom:.45rem; }
+      .hero p { color:#A7B0BC; font-size:1.02rem; max-width:690px; margin:.2rem 0 0; line-height:1.65; }
+      .hero p b { color:#F4F7FA; font-weight:700; }
 
       /* Benefit chips — flat, thin border */
-      .chips { display:flex; gap:.5rem; justify-content:center; flex-wrap:wrap; margin:1rem 0 .4rem; }
-      .chip { background:#161B22; border:1px solid #2A313C; border-radius:8px; padding:.5rem .85rem;
-              font-size:.85rem; color:#9BA3AF; }
-      .chip b { color:#E6E8EB; font-weight:700; }
+      .chips { display:flex; gap:.55rem; justify-content:flex-start; flex-wrap:wrap; margin:1rem 0 .65rem; }
+      .chip { background:#101218; border:1px solid #252A35; border-radius:8px; padding:.52rem .82rem;
+              font-size:.84rem; color:#A7B0BC; box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
+      .chip b { color:#F4F7FA; font-weight:700; }
 
       /* Panels (upload + result cards) — flat surface, thin border */
       div[data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius:10px !important; border:1px solid #2A313C !important; background:#161B22; }
+        border-radius:10px !important; border:1px solid #252A35 !important;
+        background:linear-gradient(180deg, #111318 0%, #0D0F14 100%);
+        box-shadow:0 18px 48px rgba(0,0,0,.28); }
 
       /* Buttons — flat */
       .stButton>button, .stDownloadButton>button, .stLinkButton>a {
-        border-radius:8px !important; font-weight:700; border:1px solid #2A313C;
-        background:#1C2230; color:#E6E8EB; }
+        border-radius:8px !important; font-weight:700; border:1px solid #2D3440;
+        background:#171A21; color:#F4F7FA; min-height:2.55rem; }
       .stButton>button:hover, .stDownloadButton>button:hover, .stLinkButton>a:hover {
-        border-color:#3D4757; color:#E6E8EB; }
+        border-color:#21C7A8; color:#FFFFFF; }
       .stButton>button[kind="primary"] {
-        background:#2F81F7; border:1px solid #2F81F7; color:#fff; }
-      .stButton>button[kind="primary"]:hover { background:#388BFD; border-color:#388BFD; color:#fff; }
+        background:#21C7A8; border:1px solid #21C7A8; color:#03110F; }
+      .stButton>button[kind="primary"]:hover { background:#35D399; border-color:#35D399; color:#03110F; }
 
       /* Inputs */
       div[data-baseweb="select"]>div, .stTextInput input, .stFileUploader section {
         border-radius:8px !important; }
-      .stFileUploader section { border:1px dashed #2A313C; background:#0E1117; }
+      div[data-baseweb="select"]>div, .stTextInput input {
+        background:#0B0D11 !important; border-color:#252A35 !important; color:#F4F7FA !important; }
+      .stFileUploader section { border:1px dashed #2D3440; background:#0B0D11; }
 
       /* Privacy note — quiet trust row */
-      .privacy { color:#6E7681; font-size:.82rem; text-align:center; margin:.5rem 0 0; }
+      .privacy { color:#7E8794; font-size:.82rem; text-align:left; margin:.5rem 0 0; }
+      .search-meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.55rem; margin:.55rem 0 1rem; }
+      .search-meta .item { border:1px solid #252A35; border-radius:8px; background:#0B0D11; padding:.58rem .68rem; }
+      .search-meta span { display:block; color:#7E8794; font-size:.74rem; line-height:1.2; }
+      .search-meta b { display:block; color:#F4F7FA; font-size:.9rem; line-height:1.35; margin-top:.12rem; }
+      .search-meta b.ok { color:#35D399; }
+      .search-meta b.warn { color:#F6C453; }
 
       /* Score badge + status pills on result cards */
-      .badge { display:inline-block; background:#1C2230; color:#E6E8EB; font-weight:700;
-               border:1px solid #2A313C; border-radius:6px; padding:.12rem .55rem; font-size:.82rem; }
+      .badge { display:inline-block; background:#16231F; color:#35D399; font-weight:700;
+               border:1px solid #245C51; border-radius:6px; padding:.12rem .55rem; font-size:.82rem; }
       .pill  { display:inline-block; border-radius:6px; padding:.1rem .5rem; font-size:.74rem;
-               margin-right:.35rem; border:1px solid #2A313C; color:#9BA3AF; background:#0E1117; }
-      .legend { font-size:.8rem; color:#9BA3AF; }
-      .company { font-weight:700; font-size:1.05rem; color:#E6E8EB; }
-      .title   { color:#9BA3AF; font-size:.95rem; }
-      footer, #MainMenu { visibility:hidden; }
+               margin-right:.35rem; border:1px solid #252A35; color:#A7B0BC; background:#0B0D11; }
+      .legend { font-size:.8rem; color:#A7B0BC; }
+      .company { font-weight:700; font-size:1.05rem; color:#F4F7FA; }
+      .title   { color:#A7B0BC; font-size:.95rem; }
+      @media (max-width: 680px) {
+        .block-container { padding-top: 1.2rem; }
+        .hero h1 { font-size: 2rem; }
+        .search-meta { grid-template-columns:1fr; }
+      }
+      footer, #MainMenu, [data-testid="stToolbar"] { visibility:hidden; }
+      header[data-testid="stHeader"] { background:transparent; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -105,15 +121,15 @@ st.markdown(
 
 # Status shown as colored text — no emoji. (label, color)
 _CONF_TEXT = {
-    "verified": ("verified", "#3FB950"),
-    "approximate": ("approx.", "#D29922"),
-    "unverified": ("unverified", "#F85149"),
+    "verified": ("verified", "#35D399"),
+    "approximate": ("approx.", "#F6C453"),
+    "unverified": ("unverified", "#FF6B7A"),
 }
 _LIVE_TEXT = {
-    "live": ("live", "#3FB950"),
-    "unknown": ("unconfirmed", "#D29922"),
-    "dead": ("closed", "#F85149"),
-    "not_checked": ("not checked", "#6E7681"),
+    "live": ("live", "#35D399"),
+    "unknown": ("unconfirmed", "#F6C453"),
+    "dead": ("closed", "#FF6B7A"),
+    "not_checked": ("not checked", "#7E8794"),
 }
 
 
@@ -142,13 +158,13 @@ st.markdown(
     """
     <div class="hero">
       <h1>Internship Finder</h1>
-      <p>Upload resume. Set your target. Get <b>verified, still-open</b>
-         internship leads — matched to your background, in any field.</p>
+      <p>Upload resume. Search broadly. Get <b>fresh, still-open</b>
+         internship leads from across the web, then sort by fit.</p>
     </div>
     <div class="chips">
-      <div class="chip"><b>Live-checked</b> roles</div>
-      <div class="chip"><b>Resume-based</b> scoring</div>
-      <div class="chip"><b>Freshness-first</b> results</div>
+      <div class="chip"><b>Broad web</b> search</div>
+      <div class="chip"><b>No preset</b> field bias</div>
+      <div class="chip"><b>Live link</b> checks</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -180,7 +196,7 @@ def _run(data: bytes, filename: str, *, term, target_role, recency_days,
         bar.progress(min(max(frac or 0.0, 0.0), 1.0), text=msg)
 
     try:
-        with st.spinner("Working… verifying every listing is still open. This can take a minute."):
+        with st.spinner("Searching the web and verifying open listings. This can take a minute."):
             result = run_pipeline(
                 resume_path, config,
                 cache_path=os.path.join(tempfile.gettempdir(), "internfinder_cache.db"),
@@ -208,23 +224,34 @@ def _run(data: bytes, filename: str, *, term, target_role, recency_days,
 
 
 # ----------------------------------------------------------------- input panel
-_TERMS = ["Summer 2027", "Fall 2027", "Winter 2027", "Spring 2028", "Summer 2028",
-          "Any term / not sure"]
+_TERMS = ["Any term / not sure", "Summer 2027", "Fall 2027", "Winter 2027",
+          "Spring 2028", "Summer 2028"]
 
 with st.container(border=True):
     st.markdown("#### 1 · Your resume")
     upload = st.file_uploader("Drop a PDF, DOCX, or TXT", type=["pdf", "docx", "doc", "txt", "md"],
                               label_visibility="collapsed")
     st.markdown(
-        '<p class="privacy">Your resume is used only for this search and is '
-        "not stored on any server.</p>", unsafe_allow_html=True)
+        '<p class="privacy">Your resume is processed only for this search and is '
+        "not saved after the run.</p>", unsafe_allow_html=True)
 
     st.markdown("#### 2 · What are you looking for?")
+    broad_web_on = bool(os.getenv("SERPAPI_API_KEY"))
+    st.markdown(
+        f"""
+        <div class="search-meta">
+          <div class="item"><span>Broad web</span><b class="{'ok' if broad_web_on else 'warn'}">{'on' if broad_web_on else 'needs key'}</b></div>
+          <div class="item"><span>Preset boards</span><b>off</b></div>
+          <div class="item"><span>Startup jobs</span><b>YC public profiles</b></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     c1, c2 = st.columns(2)
     term = c1.selectbox("Target term", _TERMS, index=0)
     target_role = c2.text_input(
-        "Roles / field you're targeting",
-        placeholder="e.g. marketing, UX design, finance, robotics…",
+        "Role, field, or keyword focus",
+        placeholder="e.g. marketing, finance, UX design, healthcare, policy...",
         help="Any field — this drives the search and ranks matches. "
              "Leave blank and we'll infer it from your resume.",
     )
@@ -261,18 +288,18 @@ if not res:
 listings: list[dict] = res["listings"]
 st.markdown("### Results")
 st.success(
-    f"Found **{len(listings)}** matching internships in {res['seconds']:.0f}s "
+    f"Found **{len(listings)}** internships in {res['seconds']:.0f}s "
     f"· scanned {res['total_fetched']} raw listings · {len(res['new'])} new since your last run."
 )
 
 # Legend so the status colors are never something to guess at.
 st.markdown(
     '<p class="legend">Date: '
-    + _status("verified", "#3FB950") + " / " + _status("approx.", "#D29922")
-    + " / " + _status("unverified", "#F85149")
+    + _status("verified", "#35D399") + " / " + _status("approx.", "#F6C453")
+    + " / " + _status("unverified", "#FF6B7A")
     + " &nbsp;|&nbsp; Live status: "
-    + _status("live", "#3FB950") + " / " + _status("unconfirmed", "#D29922")
-    + " / " + _status("closed", "#F85149") + "</p>",
+    + _status("live", "#35D399") + " / " + _status("unconfirmed", "#F6C453")
+    + " / " + _status("closed", "#FF6B7A") + "</p>",
     unsafe_allow_html=True)
 
 # ----- downloads -----

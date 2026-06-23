@@ -49,7 +49,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="internfinder",
         description="Resume-aware, freshness-validated internship finder "
-                    "(hardware/embedded biased).",
+                    "(field-agnostic, startup-aware).",
     )
     p.add_argument("--resume", "-r", required=True, help="Path to resume (PDF/DOCX/TXT).")
     p.add_argument("--config", "-c", default="config.yaml", help="Config YAML path.")

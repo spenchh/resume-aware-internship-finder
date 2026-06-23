@@ -1,8 +1,8 @@
 """Resume parsing (spec Section 3.1).
 
 Extracts skills, tools/languages, coursework, project keywords, degree/major, and
-prior experience titles from a PDF/DOCX/TXT resume, then builds a *weighted*
-keyword map (with hardware-domain synonym expansion) used by the matcher.
+prior experience titles from a PDF/DOCX/TXT resume, then builds a field-agnostic
+weighted keyword map used by the matcher.
 """
 
 from __future__ import annotations
@@ -102,16 +102,24 @@ _DEGREE_RE = re.compile(
     re.I,
 )
 _MAJOR_RE = re.compile(
-    r"\b(?:in|of)\s+([A-Za-z][A-Za-z&/ ]{3,40}?(?:engineering|science|physics|mathematics))\b",
+    r"\b(?:in|of)\s+([A-Za-z][A-Za-z&/ ]{3,60}?"
+    r"(?:engineering|science|physics|mathematics|math|business|finance|economics|"
+    r"marketing|design|biology|chemistry|nursing|healthcare|communications?|"
+    r"psychology|policy|political science|public health|accounting|education|"
+    r"statistics|data science|computer science))\b",
     re.I,
 )
 _TITLE_RE = re.compile(
     r"\b("
-    r"(?:senior|junior|lead|staff|principal|research|software|hardware|firmware|embedded|"
-    r"electrical|design|verification|systems|fpga|asic|rf|analog|digital|power|robotics|"
-    r"mechanical|test|validation|applications)\s+"
-    r"(?:engineer(?:ing)?|intern(?:ship)?|developer|scientist|assistant|researcher|technician)"
-    r"|(?:engineering|hardware|software|firmware|research)\s+intern"
+    r"(?:senior|junior|lead|staff|principal|associate|assistant|research|product|project|program|"
+    r"marketing|brand|growth|sales|business|finance|financial|accounting|investment|operations|"
+    r"strategy|design|ux|ui|graphic|content|social|communications|public relations|policy|legal|"
+    r"data|analytics|science|biology|chemistry|clinical|lab|nursing|healthcare|education|"
+    r"software|hardware|firmware|embedded|electrical|mechanical|systems|test|validation)\s+"
+    r"(?:intern(?:ship)?|analyst|associate|assistant|coordinator|manager|designer|researcher|"
+    r"scientist|technician|engineer(?:ing)?|developer|specialist|consultant)"
+    r"|(?:marketing|finance|business|product|design|research|operations|sales|policy|clinical|"
+    r"engineering|software|hardware|data)\s+intern"
     r"|intern(?:ship)?|co-?op|teaching assistant|research assistant"
     r")\b",
     re.I,

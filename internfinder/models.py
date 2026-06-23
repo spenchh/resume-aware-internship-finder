@@ -71,7 +71,7 @@ class Listing:
     title: str
     location: str = ""
     apply_url: str = ""
-    source: str = ""  # e.g. "greenhouse:sifive", "github:vanshb03/Summer2027-Internships"
+    source: str = ""  # e.g. "greenhouse:company-slug", "serpapi:google_jobs"
 
     # --- descriptive ---
     company_description: str = ""

@@ -3,10 +3,13 @@ parsing, matching, dedup, and report rendering. All offline (no network)."""
 
 from __future__ import annotations
 
+import html
+import json
 import tempfile
 import unittest
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from internfinder import domain, freshness_validator as fv, matcher, report_generator
 from internfinder.cache import Cache
@@ -15,7 +18,7 @@ from internfinder.models import (
     LIVE_DEAD, LIVE_OK, LIVE_UNKNOWN, Listing,
 )
 from internfinder.resume_parser import parse_resume
-from internfinder.sources import base, github_lists, schemaorg
+from internfinder.sources import base, github_lists, job_search_api, schemaorg, yc_jobs
 
 TODAY = datetime.now(timezone.utc).date()
 SAMPLE_RESUME = Path(__file__).resolve().parent.parent / "sample_data" / "sample_resume.txt"
@@ -36,6 +39,13 @@ class TestDomain(unittest.TestCase):
         terms = domain.extract_known_terms("Experience with digital design and power electronics.")
         self.assertIn("digital design", terms)
         self.assertIn("power electronics", terms)
+
+    def test_extract_requirements_includes_generic_non_engineering_terms(self):
+        terms = base.extract_requirements(
+            "Own social media campaigns, financial modeling, customer research, and policy analysis."
+        )
+        self.assertIn("social media", terms)
+        self.assertIn("financial modeling", terms)
 
 
 class TestResumeParser(unittest.TestCase):
@@ -110,6 +120,132 @@ class TestSchemaOrg(unittest.TestCase):
         expired = self.HTML.replace("2026-12-31", "2000-01-01")
         self.assertFalse(schemaorg.has_open_jobposting(expired))
         self.assertTrue(schemaorg.has_open_jobposting(self.HTML))
+
+
+class TestSerpApiSource(unittest.TestCase):
+    def test_blank_focus_builds_broad_internship_query(self):
+        class FakeResponse:
+            ok = True
+
+            def json(self):
+                return {"jobs_results": []}
+
+        class FakeHttp:
+            def __init__(self):
+                self.params = None
+
+            def get(self, _url, params=None, obey_robots=True):
+                self.params = params
+                return FakeResponse()
+
+        http = FakeHttp()
+        ctx = base.SourceContext(
+            http=http,
+            config={
+                "search": {"term": "", "target_role": "", "locations": ["United States"]},
+                "domain": {"priority_keywords": []},
+                "sources": {"serpapi_google_jobs": {"enabled": True, "max_results": 5}},
+            },
+        )
+        with patch.dict("os.environ", {"SERPAPI_API_KEY": "test"}, clear=False):
+            rows = job_search_api.fetch(ctx)
+
+        self.assertEqual(rows, [])
+        self.assertEqual(http.params["q"], "internship")
+
+
+class TestYCStartupSource(unittest.TestCase):
+    def test_empty_selectors_fetches_broad_yc_dataset(self):
+        class FakeResponse:
+            ok = True
+
+            def json(self):
+                return [{"name": "AnyField Startup", "status": "Active", "isHiring": True}]
+
+        class FakeHttp:
+            def __init__(self):
+                self.urls = []
+
+            def get(self, url):
+                self.urls.append(url)
+                return FakeResponse()
+
+        http = FakeHttp()
+        ctx = base.SourceContext(http=http, config={})
+        companies = yc_jobs._yc_companies(ctx, [])
+        self.assertEqual(companies[0]["name"], "AnyField Startup")
+        self.assertTrue(http.urls[0].endswith("/companies/all.json"))
+
+    def test_prefers_active_small_recent_companies(self):
+        companies = [
+            {"name": "OldTiny", "status": "Active", "team_size": 5, "batch": "Winter 2018"},
+            {"name": "BigRecent", "status": "Active", "isHiring": True, "team_size": 200, "batch": "Winter 2024"},
+            {"name": "InactiveTiny", "status": "Inactive", "isHiring": True, "team_size": 4, "batch": "Summer 2024"},
+            {"name": "NotHiring", "status": "Active", "isHiring": False, "team_size": 6, "batch": "Summer 2024"},
+            {"name": "TinyRecent", "status": "Active", "isHiring": True, "team_size": 8, "batch": "Winter 2024"},
+            {"name": "TinyRecentB", "status": "Active", "isHiring": True, "team_size": 22, "batch": "Summer 2023"},
+            {"name": "UnknownTeam", "status": "Active", "isHiring": True, "batch": "Summer 2024"},
+        ]
+        ranked = yc_jobs._filter_and_rank_companies(
+            companies,
+            {"active_only": True, "hiring_only": True, "small_team_max": 50, "recent_batch_year_min": 2020},
+        )
+        self.assertEqual([c["name"] for c in ranked], ["TinyRecent", "TinyRecentB", "UnknownTeam"])
+
+    def test_slug_candidates_use_yc_slug_and_website_domain(self):
+        candidates = yc_jobs._slug_candidates({
+            "name": "Acme Labs Inc.",
+            "slug": "acme-labs",
+            "website": "https://jobs.acme.ai/careers",
+        })
+        self.assertEqual(candidates[0], "acme-labs")
+        self.assertIn("acmelabs", candidates)
+        self.assertIn("acme", candidates)
+
+    def test_public_profile_jobs_create_startup_listing(self):
+        payload = {
+            "props": {
+                "company": {
+                    "id": 123,
+                    "slug": "acme-labs",
+                    "name": "Acme Labs",
+                    "batch": "W26",
+                    "team_size": 9,
+                    "one_liner": "Developer tools for hardware teams.",
+                    "tags": ["Developer Tools"],
+                },
+                "jobPostings": [{
+                    "id": 987,
+                    "title": "Product Engineering Intern",
+                    "url": "/companies/acme-labs/jobs/abc-product-engineering-intern",
+                    "location": "Remote",
+                    "type": "Internship",
+                    "prettyRole": "Engineering",
+                    "minExperience": "Any (new grads ok)",
+                    "skills": ["Python", "TypeScript"],
+                    "createdAt": "5 days",
+                }],
+            }
+        }
+
+        class FakeResponse:
+            ok = True
+            text = f'<div data-page="{html.escape(json.dumps(payload))}"></div>'
+
+        class FakeHttp:
+            def get(self, _url):
+                return FakeResponse()
+
+        ctx = base.SourceContext(http=FakeHttp(), config={})
+        rows = yc_jobs._fetch_profile_jobs(ctx, {"slug": "acme-labs"})
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row.company, "Acme Labs")
+        self.assertTrue(row.is_startup)
+        self.assertEqual(row.source, "yc:profile:acme-labs")
+        self.assertEqual(row.requirements, ["Python", "TypeScript"])
+        self.assertEqual(row.date_confidence, CONF_APPROXIMATE)
+        self.assertIn("9-person team", row.funding_stage)
 
 
 class TestFreshnessDates(unittest.TestCase):
