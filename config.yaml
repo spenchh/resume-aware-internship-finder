@@ -42,8 +42,10 @@ http:
 
 # ---- Matching / scoring (Section 7) ----------------------------------------
 matching:
-  use_llm: auto                 # auto (use Claude if ANTHROPIC_API_KEY set) | always | never
-  llm_model: "claude-haiku-4-5" # cheap + fast for per-listing scoring; bump to sonnet for quality
+  use_llm: auto                 # auto | always | never
+  llm_provider: auto            # auto | openrouter | anthropic
+  openrouter_model: "z-ai/glm-5.2" # open-weight default via OpenRouter
+  llm_model: "claude-haiku-4-5" # Claude fallback/default if ANTHROPIC_API_KEY is set
   llm_max_listings: 60          # cap LLM calls per run to control cost
   min_score_to_report: 0        # show everything found; sort/filter by match score in the UI
 

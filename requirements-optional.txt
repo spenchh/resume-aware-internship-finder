@@ -1,6 +1,6 @@
 # Optional dependencies — the tool degrades gracefully without these.
-#   anthropic   -> enables LLM-based match scoring (Section 7). Falls back to
-#                  weighted keyword overlap when absent or no API key is set.
+#   anthropic   -> optional Claude fallback for AI match scoring. OpenRouter
+#                  uses the core requests dependency.
 #   streamlit   -> interactive dashboard (Phase 3, Section 9).
 anthropic>=0.40
 streamlit>=1.40

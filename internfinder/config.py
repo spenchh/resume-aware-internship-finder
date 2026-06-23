@@ -94,6 +94,8 @@ _DEFAULTS: dict[str, Any] = {
     },
     "matching": {
         "use_llm": "auto",
+        "llm_provider": "auto",
+        "openrouter_model": "z-ai/glm-5.2",
         "llm_model": "claude-haiku-4-5",
         "llm_max_listings": 60,
         "min_score_to_report": 0,

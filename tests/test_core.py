@@ -358,6 +358,57 @@ class TestMatcher(unittest.TestCase):
         s, _, _ = matcher.keyword_score(self.profile, l)
         self.assertLess(s, 25)
 
+    def test_auto_prefers_openrouter_when_key_is_set(self):
+        cfg = {"matching": {"use_llm": "auto", "llm_provider": "auto", "openrouter_model": "z-ai/glm-5.2"}}
+        with patch.dict("os.environ", {"OPENROUTER_API_KEY": "or-test"}, clear=False):
+            llm = matcher._maybe_client(cfg)
+        self.assertEqual(llm["provider"], "openrouter")
+        self.assertEqual(llm["model"], "z-ai/glm-5.2")
+
+    def test_openrouter_scoring_updates_listing(self):
+        class FakeResponse:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {
+                    "choices": [{
+                        "message": {
+                            "content": json.dumps({
+                                "score": 82,
+                                "rationale": "Strong overlap for the candidate.",
+                                "matched_skills": ["research", "python"],
+                                "missing_skills": ["sql"],
+                            })
+                        }
+                    }]
+                }
+
+        calls = []
+
+        def fake_post(_url, **kwargs):
+            calls.append(kwargs["json"])
+            return FakeResponse()
+
+        listing = mk(title="Research Intern", description_text="Research and Python analysis.")
+        cfg = {
+            "matching": {
+                "use_llm": "always",
+                "llm_provider": "openrouter",
+                "openrouter_model": "z-ai/glm-5.2",
+                "llm_max_listings": 1,
+            }
+        }
+        with patch.dict("os.environ", {"OPENROUTER_API_KEY": "or-test"}, clear=False):
+            with patch("requests.post", side_effect=fake_post):
+                matcher.score_listings(self.profile, [listing], cfg)
+
+        self.assertEqual(listing.match_score, 82)
+        self.assertEqual(listing.matched_keywords, ["research", "python"])
+        self.assertEqual(calls[0]["model"], "z-ai/glm-5.2")
+
 
 class TestCache(unittest.TestCase):
     def test_first_seen_stable_and_diff(self):

@@ -21,7 +21,7 @@ import streamlit as st
 
 # --- Make secrets available to the backend BEFORE it loads env / API keys -----
 # On Streamlit Cloud you set these under  Settings → Secrets  (TOML format).
-for _key in ("ANTHROPIC_API_KEY", "SERPAPI_API_KEY", "GITHUB_TOKEN"):
+for _key in ("OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "SERPAPI_API_KEY", "GITHUB_TOKEN"):
     try:
         if _key in st.secrets and st.secrets[_key]:
             os.environ.setdefault(_key, str(st.secrets[_key]))
@@ -103,9 +103,9 @@ st.markdown(
         background:var(--accent-strong); border-color:var(--accent-strong); color:var(--accent-ink); }
 
       /* Inputs */
-      div[data-baseweb="select"]>div, .stTextInput input, .stFileUploader section {
+      div[data-baseweb="select"]>div, .stTextInput input, .stNumberInput input, .stFileUploader section {
         border-radius:7px !important; }
-      div[data-baseweb="select"]>div, .stTextInput input {
+      div[data-baseweb="select"]>div, .stTextInput input, .stNumberInput input {
         background:var(--surface-3) !important; border-color:var(--line) !important; color:var(--text) !important; }
       .stFileUploader section { border:1px dashed var(--line-strong); background:var(--surface-3); }
 
@@ -205,7 +205,7 @@ st.markdown(
 
 # ----------------------------------------------------------------- run pipeline
 def _run(data: bytes, filename: str, *, term, target_role, recency_days,
-         deadline_days, live_check, llm_mode) -> None:
+         deadline_days, live_check, llm_mode, llm_provider) -> None:
     suffix = Path(filename).suffix or ".txt"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(data)
@@ -219,6 +219,7 @@ def _run(data: bytes, filename: str, *, term, target_role, recency_days,
         "freshness.deadline_lookahead_days": deadline_days,
         "freshness.live_check": live_check,
         "matching.use_llm": llm_mode,
+        "matching.llm_provider": llm_provider,
         "output.format": "both",
     })
 
@@ -256,8 +257,12 @@ def _run(data: bytes, filename: str, *, term, target_role, recency_days,
 
 
 # ----------------------------------------------------------------- input panel
-_TERMS = ["Any term / not sure", "Summer 2027", "Fall 2027", "Winter 2027",
-          "Spring 2028", "Summer 2028"]
+_AI_OPTIONS = {
+    "Auto: open-weight first, then Claude": ("auto", "auto"),
+    "Open-weight GLM 5.2": ("always", "openrouter"),
+    "Claude": ("always", "anthropic"),
+    "Keyword only": ("never", "auto"),
+}
 
 with st.container(border=True):
     st.markdown("#### 1 · Your resume")
@@ -269,39 +274,44 @@ with st.container(border=True):
 
     st.markdown("#### 2 · What are you looking for?")
     broad_web_on = bool(os.getenv("SERPAPI_API_KEY"))
+    open_weight_on = bool(os.getenv("OPENROUTER_API_KEY"))
     st.markdown(
         f"""
         <div class="search-meta">
           <div class="item"><span>Broad web</span><b class="{'ok' if broad_web_on else 'warn'}">{'on' if broad_web_on else 'needs key'}</b></div>
           <div class="item"><span>Preset boards</span><b>off</b></div>
           <div class="item"><span>Startup jobs</span><b>YC public profiles</b></div>
+          <div class="item"><span>Open-weight AI</span><b class="{'ok' if open_weight_on else 'warn'}">{'GLM 5.2' if open_weight_on else 'needs key'}</b></div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    c1, c2 = st.columns(2)
-    term = c1.selectbox("Target term", _TERMS, index=0)
-    target_role = c2.text_input(
+    term = st.text_input(
+        "Target term (optional)",
+        placeholder="Any term, Summer 2027, Fall 2026, Spring 2028...",
+        help="Leave blank to search without a term preset.",
+    ).strip()
+    target_role = st.text_input(
         "Role, field, or keyword focus",
         placeholder="e.g. marketing, finance, UX design, healthcare, policy...",
         help="Any field — this drives the search and ranks matches. "
              "Leave blank and we'll infer it from your resume.",
-    )
+    ).strip()
 
     with st.expander("Advanced search options"):
-        a1, a2 = st.columns(2)
-        recency_days = a1.slider("Posted within (days)", 7, 60, 21, 1)
-        deadline_days = a2.slider("Deadline within (days)", 7, 60, 14, 1)
+        recency_days = st.number_input("Posted within (days)", 1, 365, 21, 1)
+        deadline_days = st.number_input("Deadline within (days)", 1, 365, 14, 1)
         live_check = st.checkbox(
             "Verify every listing is still open (recommended)", value=True,
             help="Re-checks each posting's link live before showing it. Slower, but no dead links.")
-        llm_mode = st.selectbox(
-            "AI match scoring (Claude)", ["auto", "always", "never"], index=0,
-            help="'auto' uses Claude only if an ANTHROPIC_API_KEY is configured; "
-                 "otherwise it falls back to keyword scoring.")
-
-    if term == "Any term / not sure":
-        term = ""
+        ai_choice = st.radio(
+            "AI match scoring",
+            list(_AI_OPTIONS),
+            index=0,
+            help="Auto uses OpenRouter's open-weight GLM 5.2 if OPENROUTER_API_KEY is set, "
+                 "then Claude if ANTHROPIC_API_KEY is set, then keyword scoring.",
+        )
+        llm_mode, llm_provider = _AI_OPTIONS[ai_choice]
 
     run_clicked = st.button("Find internships", type="primary", use_container_width=True,
                             disabled=upload is None)
@@ -309,7 +319,7 @@ with st.container(border=True):
 if run_clicked and upload is not None:
     _run(upload.getvalue(), upload.name, term=term, target_role=target_role,
          recency_days=recency_days, deadline_days=deadline_days,
-         live_check=live_check, llm_mode=llm_mode)
+         live_check=live_check, llm_mode=llm_mode, llm_provider=llm_provider)
 
 
 # ----------------------------------------------------------------- results

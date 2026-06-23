@@ -36,9 +36,10 @@ whoever uses it.
 4. *(Optional)* Under **Advanced settings → Secrets**, paste any API keys you have
    (all optional — the app works without them):
    ```toml
-   ANTHROPIC_API_KEY = "sk-ant-..."   # enables Claude AI match scoring
-   SERPAPI_API_KEY   = "..."          # enables Google Jobs source
-   GITHUB_TOKEN      = "..."          # higher rate limit for curated GitHub lists
+   OPENROUTER_API_KEY = "sk-or-..."   # enables open-weight GLM 5.2 match scoring
+   ANTHROPIC_API_KEY  = "sk-ant-..."  # optional Claude fallback scoring
+   SERPAPI_API_KEY    = "..."         # enables Google Jobs source
+   GITHUB_TOKEN       = "..."         # higher rate limit for curated GitHub lists
    ```
 5. Click **Deploy**. You'll get a public URL like
    `https://spenchh-resume-aware-internship-finder.streamlit.app` — that's your app.
@@ -79,12 +80,13 @@ python main.py --resume sample_data/sample_resume.txt --format both
 ### Optional extras
 
 ```bash
-pip install -r requirements-optional.txt      # Claude scoring + Streamlit dashboard
+pip install -r requirements-optional.txt      # optional Claude fallback + Streamlit dashboard
 copy .env.example .env                         # then fill in keys you have
 ```
 
-- `ANTHROPIC_API_KEY` → enables Claude-based match scoring (otherwise weighted
-  keyword scoring is used).
+- `OPENROUTER_API_KEY` → enables open-weight AI match scoring through OpenRouter
+  using `z-ai/glm-5.2` by default.
+- `ANTHROPIC_API_KEY` → optional Claude fallback scoring if OpenRouter is not set.
 - `SERPAPI_API_KEY` → enables the Google Jobs breadth source.
 - `GITHUB_TOKEN` → higher GitHub API rate limit for curated-list freshness checks.
 
@@ -105,7 +107,9 @@ python main.py --resume RESUME [options]
   --output, -o       Output directory (default: reports/)
   --format           markdown | html | both
   --no-live-check    Skip the live URL re-check (faster, weaker freshness)
-  --llm              auto | always | never  (LLM scoring mode)
+  --llm              auto | always | never  (AI scoring mode)
+  --llm-provider     auto | openrouter | anthropic
+  --llm-model        Override provider model, e.g. z-ai/glm-5.2
   --max-llm          Cap listings sent to the LLM
   --cache            SQLite cache path (default: cache.db)
   --sources          Restrict sources, e.g. greenhouse,lever,ashby
@@ -118,8 +122,8 @@ Examples:
 # Tighter freshness, HTML report
 python main.py -r resume.pdf --recency-days 14 --deadline-days 7 --format html
 
-# Only the most date-reliable sources, with Claude scoring forced on
-python main.py -r resume.pdf --sources greenhouse,lever,ashby,schemaorg --llm always
+# Only the most date-reliable sources, with open-weight scoring forced on
+python main.py -r resume.pdf --sources greenhouse,lever,ashby,schemaorg --llm always --llm-provider openrouter
 
 # Fast pass without the live re-check
 python main.py -r resume.pdf --no-live-check
@@ -143,7 +147,7 @@ resume ─▶ resume_parser ─▶ weighted keywords (+ synonym expansion)
                                    ▼
  freshness.live_check  ── re-request every URL, drop dead ──▶ retained
                                    ▼
- matcher.score_listings (keyword overlap, or Claude) ─▶ report_generator ─▶ report
+ matcher.score_listings (keyword, OpenRouter, or Claude) ─▶ report_generator ─▶ report
 ```
 
 | Module | Responsibility |
@@ -152,7 +156,7 @@ resume ─▶ resume_parser ─▶ weighted keywords (+ synonym expansion)
 | `internfinder/domain.py` | Generic term extraction plus optional domain synonym expansion when specialized terms appear. |
 | `internfinder/sources/*` | One fetcher per source. Each fails soft. |
 | `internfinder/freshness_validator.py` | **The core** — date resolution, eligibility windows, live-check, dedup. |
-| `internfinder/matcher.py` | 0–100 match scoring (keyword or Claude). |
+| `internfinder/matcher.py` | 0–100 match scoring (keyword, open-weight OpenRouter, or Claude). |
 | `internfinder/report_generator.py` | Markdown/HTML report, verified vs unverified sections. |
 | `internfinder/cache.py` | SQLite first-seen tracking + run-over-run diff. |
 | `internfinder/cli.py` | Orchestration + CLI. |
@@ -242,7 +246,7 @@ streamlit run dashboard.py
 
 All behavior is in `config.yaml` (every value is CLI-overridable). Key sections:
 `search` (term, role keywords, locations), `freshness` (windows + live-check),
-`http` (politeness), `matching` (LLM model/mode, min score), `sources`
+`http` (politeness), `matching` (AI provider/model/mode, min score), `sources`
 (per-source enable + slugs/repos/urls), `domain` (priority keywords/sectors),
 `output`. Defaults intentionally avoid preset company boards, curated repo lists,
 and YC sector selectors; see the inline comments in `config.yaml`.
@@ -284,5 +288,5 @@ rendering.
 | "No listings fetched" | For broad web search, set `SERPAPI_API_KEY`; otherwise add source slugs/repos/URLs or enable a source with public listings. Run with `-v`. |
 | Few/zero results | The recency window may be tight for the current cycle — widen `--recency-days`, or check that boards have intern roles posted yet. |
 | Scanned-PDF resume parses empty | Export a text-based PDF or DOCX (image-only PDFs have no extractable text). |
-| LLM scoring not used | Set `ANTHROPIC_API_KEY` and `pip install anthropic`; or `--llm always` to see the warning reason. |
+| AI scoring not used | Set `OPENROUTER_API_KEY` for open-weight GLM 5.2 scoring, or `ANTHROPIC_API_KEY` for Claude; use `--llm always` to see the warning reason. |
 | Live-check drops too much | A site may block bots (shows as "could not verify", kept). True dead links are dropped by design. |

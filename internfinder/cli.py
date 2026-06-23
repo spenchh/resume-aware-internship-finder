@@ -61,7 +61,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-live-check", action="store_true",
                    help="Skip the live URL re-check (faster, but freshness is weaker).")
     p.add_argument("--llm", choices=["auto", "always", "never"],
-                   help="LLM scoring mode (default auto: use Claude if ANTHROPIC_API_KEY set).")
+                   help="AI scoring mode (default auto: OpenRouter, then Claude, then keywords).")
+    p.add_argument("--llm-provider", choices=["auto", "openrouter", "anthropic"],
+                   help="AI scoring provider (default auto: open-weight OpenRouter first).")
+    p.add_argument("--llm-model", help="Override provider model, e.g. z-ai/glm-5.2.")
     p.add_argument("--max-llm", type=int, help="Cap number of listings sent to the LLM.")
     p.add_argument("--cache", default="cache.db", help="SQLite cache path.")
     p.add_argument("--sources", help="Comma list to restrict sources (e.g. greenhouse,lever).")
@@ -88,8 +91,12 @@ def _overrides_from_args(args) -> dict:
         "output.directory": args.output,
         "output.format": args.format,
         "matching.use_llm": args.llm,
+        "matching.llm_provider": args.llm_provider,
         "matching.llm_max_listings": args.max_llm,
     }
+    if args.llm_model:
+        key = "matching.llm_model" if args.llm_provider == "anthropic" else "matching.openrouter_model"
+        ov[key] = args.llm_model
     if args.no_live_check:
         ov["freshness.live_check"] = False
     return ov
