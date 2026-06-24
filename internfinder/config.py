@@ -76,6 +76,7 @@ _DEFAULTS: dict[str, Any] = {
         "role_keywords": ["intern", "internship", "co-op"],
         "locations": ["United States", "Remote"],
         "remote_preference": "any",
+        "include_startups": False,
     },
     "freshness": {
         "recency_days": 21,
@@ -107,7 +108,7 @@ _DEFAULTS: dict[str, Any] = {
         "schemaorg_urls": {"enabled": True, "urls": []},
         "github_lists": {"enabled": True, "repos": [], "max_commit_age_days": 14},
         "yc_jobs": {
-            "enabled": True,
+            "enabled": False,
             "selectors": [],
             "industries": [],
             "active_only": True,
@@ -123,7 +124,7 @@ _DEFAULTS: dict[str, Any] = {
             "enabled": True,
             "max_results": 100,
             "max_locations": 2,
-            "startup_breadth": True,
+            "startup_breadth": False,
             "startup_query_terms": [
                 "startup internship",
                 "early stage startup internship",

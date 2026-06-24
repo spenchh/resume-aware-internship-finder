@@ -96,7 +96,7 @@ def _build_queries(config: dict) -> list[tuple[str, bool]]:
 
     add([*focus, "internship", *suffix], False)
 
-    if source_cfg.get("startup_breadth", True):
+    if source_cfg.get("startup_breadth", False):
         startup_terms = source_cfg.get("startup_query_terms") or _DEFAULT_STARTUP_QUERY_TERMS
         for phrase in startup_terms:
             phrase = str(phrase).strip()

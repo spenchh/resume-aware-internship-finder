@@ -22,6 +22,7 @@ search:
     - United States
     - Remote
   remote_preference: any        # any | remote | hybrid | onsite
+  include_startups: false       # startup add-on is opt-in, not the default search
 
 # ---- Freshness windows (Section 3.3 / 6) -----------------------------------
 freshness:
@@ -81,9 +82,9 @@ sources:
     repos: []                   # add curated repos only if you want that specific list
     max_commit_age_days: 14     # skip repo if no commits within this window
 
-  # Tier 2 — startup-specific.
+  # Tier 2 — startup-specific add-on.
   yc_jobs:
-    enabled: true
+    enabled: false
     # Empty selectors = use the broad public YC company dataset, then rank toward
     # active/hiring/small/recent companies before probing public profile jobs and
     # ATS boards. Add selectors only if you intentionally want a narrower startup
@@ -105,7 +106,7 @@ sources:
     enabled: true               # auto-skips if SERPAPI_API_KEY is unset
     max_results: 100            # total rows kept across all SerpAPI query variants
     max_locations: 2            # first N configured locations to query
-    startup_breadth: true       # add web-wide startup searches beyond YC
+    startup_breadth: false      # add web-wide startup searches only when opted in
     startup_query_terms:
       - startup internship
       - early stage startup internship

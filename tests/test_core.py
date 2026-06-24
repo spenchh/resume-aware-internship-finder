@@ -152,7 +152,44 @@ class TestSerpApiSource(unittest.TestCase):
 
         self.assertEqual(rows, [])
         self.assertEqual(http.params_list[0]["q"], "internship")
-        self.assertIn("startup internship", [p["q"] for p in http.params_list])
+        self.assertEqual([p["q"] for p in http.params_list], ["internship"])
+
+    def test_startup_breadth_is_opt_in(self):
+        class FakeResponse:
+            ok = True
+
+            def json(self):
+                return {"jobs_results": []}
+
+        class FakeHttp:
+            def __init__(self):
+                self.queries = []
+
+            def get(self, _url, params=None, obey_robots=True):
+                self.queries.append(params["q"])
+                return FakeResponse()
+
+        http = FakeHttp()
+        ctx = base.SourceContext(
+            http=http,
+            config={
+                "search": {"term": "", "target_role": "", "locations": ["United States"]},
+                "domain": {"priority_keywords": []},
+                "sources": {
+                    "serpapi_google_jobs": {
+                        "enabled": True,
+                        "max_results": 5,
+                        "startup_breadth": True,
+                        "startup_query_terms": ["startup internship"],
+                    }
+                },
+            },
+        )
+        with patch.dict("os.environ", {"SERPAPI_API_KEY": "test"}, clear=False):
+            rows = job_search_api.fetch(ctx)
+
+        self.assertEqual(rows, [])
+        self.assertEqual(http.queries, ["internship", "startup internship"])
 
     def test_remote_preference_and_startup_terms_feed_queries(self):
         class FakeResponse:

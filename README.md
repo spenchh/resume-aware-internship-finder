@@ -21,9 +21,10 @@ those candidates, but nothing assumes you're an engineer.
 ## 🌐 Use it on the web (no install — just upload your resume)
 
 The entire tool runs in the browser via **`streamlit_app.py`**: upload a resume,
-choose your role focus and preferred work mode, click **Find internships**, and
-it parses, searches, live-verifies, scores, and lists the results — with filters
-and downloadable reports. Nothing to install for whoever uses it.
+choose your role focus, preferred work mode, and source mix, click **Find
+internships**, and it parses, searches, live-verifies, scores, and lists the
+results — with filters and downloadable reports. Nothing to install for whoever
+uses it.
 
 **Deploy your own copy (free, ~3 minutes):**
 
@@ -87,8 +88,8 @@ copy .env.example .env                         # then fill in keys you have
 - `OPENROUTER_API_KEY` → enables open-weight AI match scoring through OpenRouter
   using `z-ai/glm-5.2` by default.
 - `ANTHROPIC_API_KEY` → optional Claude fallback scoring if OpenRouter is not set.
-- `SERPAPI_API_KEY` → enables the Google Jobs breadth source, including broad
-  startup web queries beyond YC.
+- `SERPAPI_API_KEY` → enables broad Google Jobs searches for normal internships.
+  Startup-specific expansion is optional in the web app.
 - `GITHUB_TOKEN` → higher GitHub API rate limit for curated-list freshness checks.
 
 The tool runs fully without any of these.
@@ -179,15 +180,16 @@ resume ─▶ resume_parser ─▶ weighted keywords (+ synonym expansion)
   specific community list. The repo's last-commit date is checked first; a stale
   repo is skipped.
 
-**Tier 2 — startup-specific:** YC (`yc_jobs`, broad public YC company dataset by
-default, ranked toward active/hiring/small/recent companies, then public YC
+**Tier 2 — optional startup add-on:** YC (`yc_jobs`, broad public YC company
+dataset ranked toward active/hiring/small/recent companies, then public YC
 profile jobs and ATS boards), Wellfound (off by default; ToS-respecting
 user-export only).
 
 **Tier 3 — broad web search, lower date trust:** SerpAPI Google Jobs. This is the
 main "search the internet broadly" source: query = internship + optional role
-focus + optional term. Relative dates are always labeled *approximate*; the
-source auto-skips without `SERPAPI_API_KEY`.
+focus + optional term. Startup-specific query expansion is opt-in, and the
+normal internship query always runs first. Relative dates are always labeled
+*approximate*; the source auto-skips without `SERPAPI_API_KEY`.
 
 > LinkedIn is intentionally **not** scraped (ToS). robots.txt is respected on
 > every host; requests are rate-limited per host with retry/backoff.

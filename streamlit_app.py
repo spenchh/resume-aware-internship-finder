@@ -194,8 +194,8 @@ st.markdown(
 
 
 # ----------------------------------------------------------------- run pipeline
-def _run(data: bytes, filename: str, *, term, target_role, remote_preference, recency_days,
-         deadline_days, live_check, llm_mode, llm_provider) -> None:
+def _run(data: bytes, filename: str, *, term, target_role, remote_preference,
+         include_startups, recency_days, deadline_days, live_check, llm_mode, llm_provider) -> None:
     suffix = Path(filename).suffix or ".txt"
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         tmp.write(data)
@@ -206,6 +206,9 @@ def _run(data: bytes, filename: str, *, term, target_role, remote_preference, re
         "search.term": term,
         "search.target_role": target_role,
         "search.remote_preference": remote_preference,
+        "search.include_startups": include_startups,
+        "sources.yc_jobs.enabled": include_startups,
+        "sources.serpapi_google_jobs.startup_breadth": include_startups,
         "freshness.recency_days": recency_days,
         "freshness.deadline_lookahead_days": deadline_days,
         "freshness.live_check": live_check,
@@ -295,6 +298,10 @@ _LIVE_CHECK_OPTIONS = {
     "Verify links": True,
     "Skip link checks": False,
 }
+_SOURCE_MIX_OPTIONS = {
+    "General internships": False,
+    "General + startup add-on": True,
+}
 
 
 def _term_options(today: date) -> list[str]:
@@ -325,19 +332,7 @@ with st.container(border=True):
     st.markdown("#### 2 · Search setup")
     broad_web_on = bool(os.getenv("SERPAPI_API_KEY"))
     open_weight_on = bool(os.getenv("OPENROUTER_API_KEY"))
-    startup_web = "broad + YC" if broad_web_on else "YC only"
-    st.markdown(
-        f"""
-        <p class="coverage">
-          Broad web <b class="{'ok' if broad_web_on else 'warn'}">{'on' if broad_web_on else 'needs key'}</b>
-          · Preset boards <b>off</b>
-          · Startup web <b>{startup_web}</b>
-          · Open-weight AI <b class="{'ok' if open_weight_on else 'warn'}">{'GLM 5.2' if open_weight_on else 'needs key'}</b>
-        </p>
-        """,
-        unsafe_allow_html=True,
-    )
-    term_col, focus_col, mode_col = st.columns(3)
+    term_col, focus_col, mode_col, source_col = st.columns(4)
     term_choice = term_col.selectbox(
         "Target term",
         _term_options(TODAY),
@@ -354,7 +349,27 @@ with st.container(border=True):
         "Work mode",
         list(_WORK_MODE_OPTIONS),
         index=0,
-        help="Used in broad web/startup queries. You can still filter final results below.",
+        help="Used in general web queries. You can still filter final results below.",
+    )
+    source_mix_choice = source_col.selectbox(
+        "Source mix",
+        list(_SOURCE_MIX_OPTIONS),
+        index=0,
+        help="General internships searches normal postings first. Startup add-on adds YC and startup-specific queries.",
+    )
+    include_startups = _SOURCE_MIX_OPTIONS[source_mix_choice]
+    startup_status = "on" if include_startups else "off"
+    startup_class = "ok" if include_startups else ""
+    st.markdown(
+        f"""
+        <p class="coverage">
+          General web <b class="{'ok' if broad_web_on else 'warn'}">{'on' if broad_web_on else 'needs key'}</b>
+          · Startup add-on <b class="{startup_class}">{startup_status}</b>
+          · Preset boards <b>off</b>
+          · Open-weight AI <b class="{'ok' if open_weight_on else 'warn'}">{'GLM 5.2' if open_weight_on else 'needs key'}</b>
+        </p>
+        """,
+        unsafe_allow_html=True,
     )
 
     term = "" if term_choice == "Any term" else term_choice
@@ -402,7 +417,7 @@ with st.container(border=True):
 
 if run_clicked and upload is not None:
     _run(upload.getvalue(), upload.name, term=term, target_role=target_role,
-         remote_preference=remote_preference,
+         remote_preference=remote_preference, include_startups=include_startups,
          recency_days=recency_days, deadline_days=deadline_days,
          live_check=live_check, llm_mode=llm_mode, llm_provider=llm_provider)
 
