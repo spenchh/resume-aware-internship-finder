@@ -89,7 +89,9 @@ copy .env.example .env                         # then fill in keys you have
   using `z-ai/glm-5.2` by default.
 - `ANTHROPIC_API_KEY` → optional Claude fallback scoring if OpenRouter is not set.
 - `SERPAPI_API_KEY` → enables broad Google Jobs searches for normal internships.
-  Startup-specific expansion is optional in the web app.
+  It expands across normal internship terms plus indexed major-board queries
+  such as Greenhouse, Lever, Ashby, LinkedIn, Handshake, and Indeed.
+  Startup-specific expansion is an add-on, not a replacement for normal search.
 - `GITHUB_TOKEN` → higher GitHub API rate limit for curated-list freshness checks.
 
 The tool runs fully without any of these.
@@ -104,8 +106,8 @@ python main.py --resume RESUME [options]
   --resume, -r       Resume file (PDF / DOCX / TXT)              [required]
   --config, -c       Config YAML (default: config.yaml)
   --term             Target term, e.g. "Summer 2027"
-  --recency-days     Posted-within window (default 21)
-  --deadline-days    Deadline lookahead window (default 14)
+  --recency-days     Posted-within window (default 60)
+  --deadline-days    Deadline lookahead window (default 90)
   --output, -o       Output directory (default: reports/)
   --format           markdown | html | both
   --no-live-check    Skip the live URL re-check (faster, weaker freshness)
@@ -186,13 +188,21 @@ profile jobs and ATS boards), Wellfound (off by default; ToS-respecting
 user-export only).
 
 **Tier 3 — broad web search, lower date trust:** SerpAPI Google Jobs. This is the
-main "search the internet broadly" source: query = internship + optional role
-focus + optional term. Startup-specific query expansion is opt-in, and the
-normal internship query always runs first. Relative dates are always labeled
-*approximate*; the source auto-skips without `SERPAPI_API_KEY`.
+main "search the internet broadly" source: it expands across general internship
+queries plus indexed major-board queries for Greenhouse, Lever, Ashby, LinkedIn,
+Handshake, and Indeed. Startup-specific query expansion is an add-on, and the
+normal internship queries always run first. Relative dates are always labeled
+*approximate*; the source auto-skips without `SERPAPI_API_KEY`. With `no_cache`
+enabled, each run asks SerpAPI for fresh Google Jobs results instead of reusing
+SerpAPI's one-hour cache.
 
 > LinkedIn is intentionally **not** scraped (ToS). robots.txt is respected on
 > every host; requests are rate-limited per host with retry/backoff.
+
+This Streamlit app searches on demand when a user runs it. A continuously
+updated internship database would require a separate backend database, scheduled
+workers, and paid/permissioned job data sources; the app is structured so that
+kind of indexer can be added later.
 
 ---
 

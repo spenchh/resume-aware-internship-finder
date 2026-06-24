@@ -22,6 +22,24 @@ _DEFAULT_STARTUP_QUERY_TERMS = [
     "small startup internship",
     "venture backed startup internship",
 ]
+_DEFAULT_GENERAL_QUERY_TERMS = [
+    "internship",
+    "intern",
+    "student internship",
+    "paid internship",
+    "summer internship",
+    "fall internship",
+    "spring internship",
+    "co-op internship",
+]
+_DEFAULT_BOARD_QUERY_TERMS = [
+    "greenhouse internship",
+    "lever internship",
+    "ashby internship",
+    "linkedin internship",
+    "handshake internship",
+    "indeed internship",
+]
 _WORK_MODE_QUERY_TERMS = {
     "remote": "remote",
     "hybrid": "hybrid",
@@ -49,6 +67,7 @@ def fetch(ctx: base.SourceContext) -> list[Listing]:
         cfg.get("max_results_per_query")
         or max(1, (max_total + (len(queries) * len(locations)) - 1) // (len(queries) * len(locations)))
     )
+    max_pages = int(cfg.get("max_pages_per_query", 2))
 
     out: list[Listing] = []
     for loc in locations:
@@ -56,7 +75,18 @@ def fetch(ctx: base.SourceContext) -> list[Listing]:
             remaining = max_total - len(out)
             if remaining <= 0:
                 break
-            out.extend(_search(ctx, api_key, query, loc, min(per_query, remaining), startup_query=startup_query))
+            out.extend(
+                _search(
+                    ctx,
+                    api_key,
+                    query,
+                    loc,
+                    min(per_query, remaining),
+                    startup_query=startup_query,
+                    max_pages=max_pages,
+                    no_cache=bool(cfg.get("no_cache", False)),
+                )
+            )
     log.info("serpapi: %d listings from %d queries", len(out), len(queries))
     return out
 
@@ -94,7 +124,20 @@ def _build_queries(config: dict) -> list[tuple[str, bool]]:
         seen.add(key)
         queries.append((query, startup_query))
 
-    add([*focus, "internship", *suffix], False)
+    general_terms = source_cfg.get("general_query_terms") or _DEFAULT_GENERAL_QUERY_TERMS
+    for phrase in general_terms:
+        phrase = str(phrase).strip()
+        if phrase:
+            add([*focus, phrase, *suffix], False)
+
+    # These still search through Google Jobs; they are query expansions to catch
+    # postings from major boards when Google indexes them, not direct scraping.
+    if source_cfg.get("board_query_breadth", True):
+        board_terms = source_cfg.get("board_query_terms") or _DEFAULT_BOARD_QUERY_TERMS
+        for phrase in board_terms:
+            phrase = str(phrase).strip()
+            if phrase:
+                add([*focus, phrase, *suffix], False)
 
     if source_cfg.get("startup_breadth", False):
         startup_terms = source_cfg.get("startup_query_terms") or _DEFAULT_STARTUP_QUERY_TERMS
@@ -115,58 +158,84 @@ def _configured_locations(search: dict, cfg: dict) -> list[str]:
     return out or ["United States"]
 
 
-def _search(ctx, api_key, query, location, max_results, *, startup_query=False) -> list[Listing]:
-    params = {
-        "engine": "google_jobs",
-        "q": query,
-        "location": location,
-        "api_key": api_key,
-        "hl": "en",
-    }
-    try:
-        res = ctx.http.get(_ENDPOINT, params=params, obey_robots=False)
-        if not res.ok:
-            log.warning("serpapi: HTTP %s", res.status or res.error)
-            return []
-        data = res.json()
-    except Exception as exc:
-        log.warning("serpapi: request failed: %s", exc)
-        return []
-
+def _search(
+    ctx,
+    api_key,
+    query,
+    location,
+    max_results,
+    *,
+    startup_query=False,
+    max_pages=1,
+    no_cache=False,
+) -> list[Listing]:
     out: list[Listing] = []
-    for job in (data.get("jobs_results") or [])[:max_results]:
-        title = (job.get("title") or "").strip()
-        desc = job.get("description", "") or ""
-        if not base.looks_like_internship(title, desc):
-            continue
-        ext = job.get("detected_extensions", {}) or {}
-        posted, conf, src = _posted(ext)
-        apply_url = _apply_link(job)
-        loc = job.get("location", "") or location
-        via = job.get("via", "google_jobs")
-        out.append(
-            Listing(
-                company=job.get("company_name", "(unknown)"),
-                title=title,
-                location=loc,
-                apply_url=apply_url,
-                source=f"serpapi:{'startup:' if startup_query else ''}{via}",
-                description_text=desc,
-                company_description=desc[:240],
-                is_startup=True if startup_query else None,
-                requirements=base.extract_requirements(desc),
-                level=base.infer_level(title),
-                work_mode=base.detect_work_mode(loc, desc),
-                posted_date=posted,
-                date_confidence=conf,
-                date_source=src,
-                raw={
-                    "serpapi_query": query,
-                    "serpapi_location": location,
-                    "startup_query": startup_query,
-                },
+    next_page_token = ""
+    page_index = 0
+    while len(out) < max_results and page_index < max_pages:
+        params = {
+            "engine": "google_jobs",
+            "q": query,
+            "location": location,
+            "api_key": api_key,
+            "hl": "en",
+            "gl": "us",
+        }
+        if no_cache:
+            params["no_cache"] = "true"
+        if next_page_token:
+            params["next_page_token"] = next_page_token
+        try:
+            res = ctx.http.get(_ENDPOINT, params=params, obey_robots=False)
+            if not res.ok:
+                log.warning("serpapi: HTTP %s", res.status or res.error)
+                break
+            data = res.json()
+        except Exception as exc:
+            log.warning("serpapi: request failed: %s", exc)
+            break
+
+        jobs = data.get("jobs_results") or []
+        for job in jobs:
+            if len(out) >= max_results:
+                break
+            title = (job.get("title") or "").strip()
+            desc = job.get("description", "") or ""
+            if not base.looks_like_internship(title, desc):
+                continue
+            ext = job.get("detected_extensions", {}) or {}
+            posted, conf, src = _posted(ext)
+            apply_url = _apply_link(job)
+            loc = job.get("location", "") or location
+            via = job.get("via", "google_jobs")
+            out.append(
+                Listing(
+                    company=job.get("company_name", "(unknown)"),
+                    title=title,
+                    location=loc,
+                    apply_url=apply_url,
+                    source=f"serpapi:{'startup:' if startup_query else ''}{via}",
+                    description_text=desc,
+                    company_description=desc[:240],
+                    is_startup=True if startup_query else None,
+                    requirements=base.extract_requirements(desc),
+                    level=base.infer_level(title),
+                    work_mode=base.detect_work_mode(loc, desc),
+                    posted_date=posted,
+                    date_confidence=conf,
+                    date_source=src,
+                    raw={
+                        "serpapi_query": query,
+                        "serpapi_location": location,
+                        "serpapi_page": page_index + 1,
+                        "startup_query": startup_query,
+                    },
+                )
             )
-        )
+        next_page_token = (data.get("serpapi_pagination") or {}).get("next_page_token") or ""
+        if not next_page_token or not jobs:
+            break
+        page_index += 1
     return out
 
 

@@ -151,8 +151,13 @@ class TestSerpApiSource(unittest.TestCase):
             rows = job_search_api.fetch(ctx)
 
         self.assertEqual(rows, [])
-        self.assertEqual(http.params_list[0]["q"], "internship")
-        self.assertEqual([p["q"] for p in http.params_list], ["internship"])
+        queries = [p["q"] for p in http.params_list]
+        self.assertEqual(queries[0], "internship")
+        self.assertIn("student internship", queries)
+        self.assertIn("greenhouse internship", queries)
+        self.assertIn("linkedin internship", queries)
+        self.assertIn("handshake internship", queries)
+        self.assertNotIn("startup internship", queries)
 
     def test_startup_breadth_is_opt_in(self):
         class FakeResponse:
@@ -179,6 +184,8 @@ class TestSerpApiSource(unittest.TestCase):
                     "serpapi_google_jobs": {
                         "enabled": True,
                         "max_results": 5,
+                        "general_query_terms": ["internship"],
+                        "board_query_breadth": False,
                         "startup_breadth": True,
                         "startup_query_terms": ["startup internship"],
                     }
@@ -221,6 +228,8 @@ class TestSerpApiSource(unittest.TestCase):
                     "serpapi_google_jobs": {
                         "enabled": True,
                         "max_results": 12,
+                        "general_query_terms": ["internship"],
+                        "board_query_breadth": False,
                         "startup_breadth": True,
                         "startup_query_terms": [
                             "startup internship",
@@ -242,6 +251,76 @@ class TestSerpApiSource(unittest.TestCase):
                 "finance venture backed startup internship Fall 2026 remote",
             ],
         )
+
+    def test_google_jobs_paginates_when_configured(self):
+        class FakeResponse:
+            ok = True
+
+            def __init__(self, payload):
+                self.payload = payload
+
+            def json(self):
+                return self.payload
+
+        class FakeHttp:
+            def __init__(self):
+                self.params_list = []
+
+            def get(self, _url, params=None, obey_robots=True):
+                self.params_list.append(params)
+                if len(self.params_list) == 1:
+                    return FakeResponse({
+                        "jobs_results": [
+                            {
+                                "title": "Marketing Intern",
+                                "company_name": "FirstCo",
+                                "location": "United States",
+                                "description": "Paid internship for students.",
+                                "via": "Google",
+                                "apply_options": [{"link": "https://first.example/jobs/intern"}],
+                            }
+                        ],
+                        "serpapi_pagination": {"next_page_token": "page-two"},
+                    })
+                return FakeResponse({
+                    "jobs_results": [
+                        {
+                            "title": "Finance Intern",
+                            "company_name": "SecondCo",
+                            "location": "United States",
+                            "description": "Finance internship for students.",
+                            "via": "Google",
+                            "apply_options": [{"link": "https://second.example/jobs/intern"}],
+                        }
+                    ]
+                })
+
+        http = FakeHttp()
+        ctx = base.SourceContext(
+            http=http,
+            config={
+                "search": {"term": "", "target_role": "", "locations": ["United States"]},
+                "domain": {"priority_keywords": []},
+                "sources": {
+                    "serpapi_google_jobs": {
+                        "enabled": True,
+                        "max_results": 20,
+                        "max_results_per_query": 20,
+                        "max_pages_per_query": 2,
+                        "no_cache": True,
+                        "general_query_terms": ["internship"],
+                        "board_query_breadth": False,
+                    }
+                },
+            },
+        )
+        with patch.dict("os.environ", {"SERPAPI_API_KEY": "test"}, clear=False):
+            rows = job_search_api.fetch(ctx)
+
+        self.assertEqual([r.company for r in rows], ["FirstCo", "SecondCo"])
+        self.assertEqual(rows[1].raw["serpapi_page"], 2)
+        self.assertEqual(http.params_list[0]["no_cache"], "true")
+        self.assertEqual(http.params_list[1]["next_page_token"], "page-two")
 
     def test_startup_queries_mark_listings_as_startups(self):
         class FakeResponse:
@@ -274,6 +353,8 @@ class TestSerpApiSource(unittest.TestCase):
                     "serpapi_google_jobs": {
                         "enabled": True,
                         "max_results": 2,
+                        "general_query_terms": ["internship"],
+                        "board_query_breadth": False,
                         "startup_breadth": True,
                         "startup_query_terms": ["startup internship"],
                     }

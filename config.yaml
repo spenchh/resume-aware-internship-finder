@@ -26,8 +26,8 @@ search:
 
 # ---- Freshness windows (Section 3.3 / 6) -----------------------------------
 freshness:
-  recency_days: 21              # "posted within last N days" qualifies
-  deadline_lookahead_days: 14   # "deadline within next N days" qualifies
+  recency_days: 60              # "posted within last N days" qualifies
+  deadline_lookahead_days: 90   # "deadline within next N days" qualifies
   live_check: true              # re-verify every retained URL before reporting (Section 6.4)
   live_check_timeout: 12        # seconds per live-check request
   include_unverified: true      # keep listings whose date can't be verified, flagged + sorted below
@@ -104,9 +104,29 @@ sources:
   # Tier 3 — general aggregator for breadth (weighted lower on trust).
   serpapi_google_jobs:
     enabled: true               # auto-skips if SERPAPI_API_KEY is unset
-    max_results: 100            # total rows kept across all SerpAPI query variants
+    max_results: 250            # total rows kept across all SerpAPI query variants
+    max_results_per_query: 20   # lets broad queries paginate before moving on
+    max_pages_per_query: 2      # Google Jobs returns about 10 rows/page
     max_locations: 2            # first N configured locations to query
+    no_cache: true              # ask SerpAPI for fresh Google Jobs results each run
+    board_query_breadth: true   # query expansions for major job boards via Google Jobs
     startup_breadth: false      # add web-wide startup searches only when opted in
+    general_query_terms:
+      - internship
+      - intern
+      - student internship
+      - paid internship
+      - summer internship
+      - fall internship
+      - spring internship
+      - co-op internship
+    board_query_terms:
+      - greenhouse internship
+      - lever internship
+      - ashby internship
+      - linkedin internship
+      - handshake internship
+      - indeed internship
     startup_query_terms:
       - startup internship
       - early stage startup internship

@@ -229,6 +229,9 @@ def _run(data: bytes, filename: str, *, term, target_role, remote_preference,
         "search.remote_preference": remote_preference,
         "search.include_startups": include_startups,
         "sources.yc_jobs.enabled": include_startups,
+        "sources.serpapi_google_jobs.board_query_breadth": True,
+        "sources.serpapi_google_jobs.no_cache": True,
+        "sources.serpapi_google_jobs.max_results": 250,
         "sources.serpapi_google_jobs.startup_breadth": include_startups,
         "freshness.recency_days": recency_days,
         "freshness.deadline_lookahead_days": deadline_days,
@@ -300,19 +303,19 @@ _ROLE_FOCUS_OPTIONS = {
     "Engineering / hardware": "engineering hardware mechanical electrical",
 }
 _RECENCY_OPTIONS = {
-    "Last 7 days": 7,
     "Last 14 days": 14,
-    "Last 21 days": 21,
     "Last 30 days": 30,
     "Last 60 days": 60,
+    "Last 90 days": 90,
+    "Any date": 3650,
     "Custom...": None,
 }
 _DEADLINE_OPTIONS = {
-    "Next 7 days": 7,
     "Next 14 days": 14,
     "Next 30 days": 30,
     "Next 60 days": 60,
     "Next 90 days": 90,
+    "Any deadline": 3650,
     "Custom...": None,
 }
 _LIVE_CHECK_OPTIONS = {
@@ -320,8 +323,8 @@ _LIVE_CHECK_OPTIONS = {
     "Skip link checks": False,
 }
 _SOURCE_MIX_OPTIONS = {
-    "General internships": False,
-    "General + startup add-on": True,
+    "Everything broad": True,
+    "General postings only": False,
 }
 
 
@@ -340,7 +343,7 @@ def _selected_days(choice: str, options: dict[str, int | None], *, label: str, d
     value = options[choice]
     if value is not None:
         return value
-    return int(st.number_input(label, 1, 365, default, 1))
+    return int(st.number_input(label, 1, 3650, default, 1))
 
 with st.container(border=True):
     st.markdown("#### 1 · Your resume")
@@ -376,22 +379,30 @@ with st.container(border=True):
         "Source mix",
         list(_SOURCE_MIX_OPTIONS),
         index=0,
-        help="General internships searches normal postings first. Startup add-on adds YC and startup-specific queries.",
+        help="Everything broad searches normal postings first, then adds startup-specific searches. It is never startup-only.",
     )
     include_startups = _SOURCE_MIX_OPTIONS[source_mix_choice]
-    startup_status = "on" if include_startups else "off"
+    startup_status = "included" if include_startups else "off"
     startup_class = "ok" if include_startups else ""
     st.markdown(
         f"""
         <p class="coverage">
-          General web <b class="{'ok' if broad_web_on else 'warn'}">{'on' if broad_web_on else 'needs key'}</b>
+          Live Google Jobs <b class="{'ok' if broad_web_on else 'warn'}">{'on' if broad_web_on else 'needs key'}</b>
+          · Major-board queries <b class="{'ok' if broad_web_on else 'warn'}">{'on' if broad_web_on else 'needs key'}</b>
           · Startup add-on <b class="{startup_class}">{startup_status}</b>
-          · Preset boards <b>off</b>
+          · Hidden company presets <b>off</b>
           · Open-weight AI <b class="{'ok' if open_weight_on else 'warn'}">{'GLM 5.2' if open_weight_on else 'needs key'}</b>
         </p>
         """,
         unsafe_allow_html=True,
     )
+    if not broad_web_on:
+        st.warning(
+            "Broad internship search is not connected yet. Add SERPAPI_API_KEY in Streamlit "
+            "Secrets to search Google Jobs across normal postings and indexed boards such as "
+            "LinkedIn, Handshake, Greenhouse, Lever, Ashby, and Indeed. Without it, results "
+            "will be sparse."
+        )
 
     term = "" if term_choice == "Any term" else term_choice
     if term_choice == _CUSTOM_TERM:
@@ -412,11 +423,11 @@ with st.container(border=True):
     with st.expander("Advanced search options"):
         adv1, adv2 = st.columns(2)
         recency_choice = adv1.selectbox("Posted within", list(_RECENCY_OPTIONS), index=2)
-        deadline_choice = adv2.selectbox("Deadline within", list(_DEADLINE_OPTIONS), index=1)
+        deadline_choice = adv2.selectbox("Deadline within", list(_DEADLINE_OPTIONS), index=3)
         recency_days = _selected_days(
-            recency_choice, _RECENCY_OPTIONS, label="Custom posted-within days", default=21)
+            recency_choice, _RECENCY_OPTIONS, label="Custom posted-within days", default=60)
         deadline_days = _selected_days(
-            deadline_choice, _DEADLINE_OPTIONS, label="Custom deadline window days", default=14)
+            deadline_choice, _DEADLINE_OPTIONS, label="Custom deadline window days", default=90)
         live_choice = st.selectbox(
             "Live checks",
             list(_LIVE_CHECK_OPTIONS),
@@ -454,6 +465,12 @@ st.success(
     f"Found **{len(listings)}** internships in {res['seconds']:.0f}s "
     f"· scanned {res['total_fetched']} raw listings · {len(res['new'])} new since your last run."
 )
+
+if res["total_fetched"] == 0 and not os.getenv("SERPAPI_API_KEY"):
+    st.warning(
+        "No broad web results were fetched because SERPAPI_API_KEY is missing. "
+        "Add it in Streamlit Secrets to search Google Jobs and indexed major boards."
+    )
 
 # Legend so the status colors are never something to guess at.
 st.markdown(

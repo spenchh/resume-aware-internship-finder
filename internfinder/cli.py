@@ -54,8 +54,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--resume", "-r", required=True, help="Path to resume (PDF/DOCX/TXT).")
     p.add_argument("--config", "-c", default="config.yaml", help="Config YAML path.")
     p.add_argument("--term", help="Override target term, e.g. 'Summer 2027'.")
-    p.add_argument("--recency-days", type=int, help="Posted-within window (default 21).")
-    p.add_argument("--deadline-days", type=int, help="Deadline lookahead window (default 14).")
+    p.add_argument("--recency-days", type=int, help="Posted-within window (default 60).")
+    p.add_argument("--deadline-days", type=int, help="Deadline lookahead window (default 90).")
     p.add_argument("--output", "-o", help="Output directory (default reports/).")
     p.add_argument("--format", choices=["markdown", "html", "both"], help="Report format.")
     p.add_argument("--no-live-check", action="store_true",
