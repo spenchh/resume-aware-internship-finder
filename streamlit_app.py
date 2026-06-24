@@ -80,12 +80,6 @@ st.markdown(
       .hero p { color:var(--muted); font-size:1rem; max-width:44rem; margin:.2rem 0 0; line-height:1.68; }
       .hero p b { color:var(--text); font-weight:680; }
 
-      /* Benefit chips — flat, thin border */
-      .chips { display:flex; gap:.55rem; justify-content:flex-start; flex-wrap:wrap; margin:1rem 0 .7rem; }
-      .chip { background:var(--surface-3); border:1px solid var(--line); border-radius:7px; padding:.52rem .8rem;
-              font-size:.84rem; color:var(--muted); }
-      .chip b { color:var(--text); font-weight:680; }
-
       /* Panels (upload + result cards) — flat surface, thin border */
       div[data-testid="stVerticalBlockBorderWrapper"] {
         border-radius:8px !important; border:1px solid var(--line) !important;
@@ -118,19 +112,12 @@ st.markdown(
         background:var(--accent-ink) !important; }
       label[data-baseweb="radio"] p { color:var(--text) !important; }
 
-      /* Privacy note — quiet trust row */
+      /* Quiet utility rows */
       .privacy { color:var(--muted-2); font-size:.82rem; text-align:left; margin:.5rem 0 0; }
-      .search-meta {
-        display:grid;
-        grid-template-columns:repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
-        gap:.55rem;
-        margin:.55rem 0 1rem;
-      }
-      .search-meta .item { border:1px solid var(--line); border-radius:7px; background:var(--surface-3); padding:.58rem .68rem; }
-      .search-meta span { display:block; color:var(--muted-2); font-size:.74rem; line-height:1.2; }
-      .search-meta b { display:block; color:var(--text); font-size:.9rem; line-height:1.35; margin-top:.12rem; }
-      .search-meta b.ok { color:var(--accent-strong); }
-      .search-meta b.warn { color:var(--warn); }
+      .coverage { color:var(--muted-2); font-size:.82rem; line-height:1.55; margin:.15rem 0 1rem; }
+      .coverage b { color:var(--text); font-weight:680; }
+      .coverage .ok { color:var(--accent-strong); }
+      .coverage .warn { color:var(--warn); }
 
       /* Score badge + status pills on result cards */
       .badge { display:inline-block; background:#1D221C; color:var(--accent-strong); font-weight:680;
@@ -151,7 +138,6 @@ st.markdown(
         .block-container { padding-left:.5rem; padding-right:.5rem; }
         .hero h1 { font-size:1.85rem; }
         .hero p { font-size:.96rem; }
-        .chip { padding:.48rem .7rem; }
       }
       footer, #MainMenu, [data-testid="stToolbar"] { visibility:hidden; }
       header[data-testid="stHeader"] { background:transparent; }
@@ -199,13 +185,8 @@ st.markdown(
     """
     <div class="hero">
       <h1>Internship Finder</h1>
-      <p>Upload resume. Search broadly. Get <b>fresh, still-open</b>
-         internship leads from across the web, then sort by fit.</p>
-    </div>
-    <div class="chips">
-      <div class="chip"><b>Broad web</b> search</div>
-      <div class="chip"><b>No preset</b> field bias</div>
-      <div class="chip"><b>Live link</b> checks</div>
+      <p>Upload resume, pick a few search settings, then get <b>fresh, still-open</b>
+         internship leads sorted by fit.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -279,6 +260,59 @@ _WORK_MODE_OPTIONS = {
     "Hybrid": "hybrid",
     "On-site": "onsite",
 }
+_CUSTOM_TERM = "Custom term..."
+_CUSTOM_FOCUS = "Custom focus..."
+_ROLE_FOCUS_OPTIONS = {
+    "Infer from resume": "",
+    _CUSTOM_FOCUS: "",
+    "Business / finance": "business finance accounting investment analyst",
+    "Marketing / communications": "marketing communications social media brand",
+    "Design / product": "design UX product creative",
+    "Data / analytics": "data analytics research business intelligence",
+    "Healthcare / life sciences": "healthcare biology public health life sciences",
+    "Policy / nonprofit": "policy nonprofit government public affairs",
+    "Research / lab": "research lab undergraduate",
+    "Software / tech": "software computer science technology",
+    "Engineering / hardware": "engineering hardware mechanical electrical",
+}
+_RECENCY_OPTIONS = {
+    "Last 7 days": 7,
+    "Last 14 days": 14,
+    "Last 21 days": 21,
+    "Last 30 days": 30,
+    "Last 60 days": 60,
+    "Custom...": None,
+}
+_DEADLINE_OPTIONS = {
+    "Next 7 days": 7,
+    "Next 14 days": 14,
+    "Next 30 days": 30,
+    "Next 60 days": 60,
+    "Next 90 days": 90,
+    "Custom...": None,
+}
+_LIVE_CHECK_OPTIONS = {
+    "Verify links": True,
+    "Skip link checks": False,
+}
+
+
+def _term_options(today: date) -> list[str]:
+    seasons = [("Spring", 1), ("Summer", 5), ("Fall", 8), ("Winter", 11)]
+    options = ["Any term", _CUSTOM_TERM]
+    for year in range(today.year, today.year + 3):
+        for season, month in seasons:
+            if year == today.year and month < today.month:
+                continue
+            options.append(f"{season} {year}")
+    return options
+
+
+def _selected_days(choice: str, options: dict[str, int | None], *, label: str, default: int) -> int:
+    value = options[choice]
+    if value is not None:
+        return value
+    return int(st.number_input(label, 1, 365, default, 1))
 
 with st.container(border=True):
     st.markdown("#### 1 · Your resume")
@@ -288,48 +322,73 @@ with st.container(border=True):
         '<p class="privacy">Your resume is processed only for this search and is '
         "not saved after the run.</p>", unsafe_allow_html=True)
 
-    st.markdown("#### 2 · What are you looking for?")
+    st.markdown("#### 2 · Search setup")
     broad_web_on = bool(os.getenv("SERPAPI_API_KEY"))
     open_weight_on = bool(os.getenv("OPENROUTER_API_KEY"))
     startup_web = "broad + YC" if broad_web_on else "YC only"
     st.markdown(
         f"""
-        <div class="search-meta">
-          <div class="item"><span>Broad web</span><b class="{'ok' if broad_web_on else 'warn'}">{'on' if broad_web_on else 'needs key'}</b></div>
-          <div class="item"><span>Preset boards</span><b>off</b></div>
-          <div class="item"><span>Startup web</span><b>{startup_web}</b></div>
-          <div class="item"><span>Open-weight AI</span><b class="{'ok' if open_weight_on else 'warn'}">{'GLM 5.2' if open_weight_on else 'needs key'}</b></div>
-        </div>
+        <p class="coverage">
+          Broad web <b class="{'ok' if broad_web_on else 'warn'}">{'on' if broad_web_on else 'needs key'}</b>
+          · Preset boards <b>off</b>
+          · Startup web <b>{startup_web}</b>
+          · Open-weight AI <b class="{'ok' if open_weight_on else 'warn'}">{'GLM 5.2' if open_weight_on else 'needs key'}</b>
+        </p>
         """,
         unsafe_allow_html=True,
     )
-    term = st.text_input(
-        "Target term (optional)",
-        placeholder="Any term, Summer 2027, Fall 2026, Spring 2028...",
-        help="Leave blank to search without a term preset.",
-    ).strip()
-    target_role = st.text_input(
-        "Role, field, or keyword focus",
-        placeholder="e.g. marketing, finance, UX design, healthcare, policy...",
-        help="Any field — this drives the search and ranks matches. "
-             "Leave blank and we'll infer it from your resume.",
-    ).strip()
-    work_mode_choice = st.radio(
-        "Preferred work mode",
+    term_col, focus_col, mode_col = st.columns(3)
+    term_choice = term_col.selectbox(
+        "Target term",
+        _term_options(TODAY),
+        index=0,
+        help="Choose Any term to search without a term preset.",
+    )
+    focus_choice = focus_col.selectbox(
+        "Search focus",
+        list(_ROLE_FOCUS_OPTIONS),
+        index=0,
+        help="Choose Infer from resume to avoid preset field bias.",
+    )
+    work_mode_choice = mode_col.selectbox(
+        "Work mode",
         list(_WORK_MODE_OPTIONS),
         index=0,
-        horizontal=True,
-        help="Used in the broad web/startup search query. You can still filter final results below.",
+        help="Used in broad web/startup queries. You can still filter final results below.",
     )
+
+    term = "" if term_choice == "Any term" else term_choice
+    if term_choice == _CUSTOM_TERM:
+        term = st.text_input(
+            "Custom target term",
+            placeholder="e.g. Fall 2026, Summer 2027, rolling...",
+        ).strip()
+
+    target_role = _ROLE_FOCUS_OPTIONS[focus_choice]
+    if focus_choice == _CUSTOM_FOCUS:
+        target_role = st.text_input(
+            "Custom role, field, or keyword focus",
+            placeholder="e.g. fashion merchandising, sports analytics, urban planning...",
+            help="This drives search and ranking. Leave blank only if you want resume-only inference.",
+        ).strip()
     remote_preference = _WORK_MODE_OPTIONS[work_mode_choice]
 
     with st.expander("Advanced search options"):
-        recency_days = st.number_input("Posted within (days)", 1, 365, 21, 1)
-        deadline_days = st.number_input("Deadline within (days)", 1, 365, 14, 1)
-        live_check = st.checkbox(
-            "Verify every listing is still open (recommended)", value=True,
-            help="Re-checks each posting's link live before showing it. Slower, but no dead links.")
-        ai_choice = st.radio(
+        adv1, adv2 = st.columns(2)
+        recency_choice = adv1.selectbox("Posted within", list(_RECENCY_OPTIONS), index=2)
+        deadline_choice = adv2.selectbox("Deadline within", list(_DEADLINE_OPTIONS), index=1)
+        recency_days = _selected_days(
+            recency_choice, _RECENCY_OPTIONS, label="Custom posted-within days", default=21)
+        deadline_days = _selected_days(
+            deadline_choice, _DEADLINE_OPTIONS, label="Custom deadline window days", default=14)
+        live_choice = st.selectbox(
+            "Live checks",
+            list(_LIVE_CHECK_OPTIONS),
+            index=0,
+            help="Verify links is slower, but avoids showing dead postings.",
+        )
+        live_check = _LIVE_CHECK_OPTIONS[live_choice]
+        ai_choice = st.selectbox(
             "AI match scoring",
             list(_AI_OPTIONS),
             index=0,
