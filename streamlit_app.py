@@ -64,12 +64,12 @@ st.markdown(
       html, body, .stApp, button, input, textarea, select,
       [class*="css"] { font-family:'Inter', sans-serif !important; }
 
-      html, body, .stApp { overflow-x:hidden; }
+      html, body, .stApp { overflow-x:clip; }
       .stApp { background:var(--bg); color:var(--text); }
       .block-container {
-        width:min(100%, 70rem);
-        max-width:min(70rem, calc(100vw - 2rem));
-        padding:2.1rem clamp(.75rem, 2.5vw, 1.5rem) 3rem;
+        width:min(92vw, 96rem);
+        max-width:calc(100vw - clamp(1rem, 4vw, 3rem));
+        padding:clamp(1.1rem, 3vw, 2.35rem) clamp(.75rem, 2.4vw, 1.75rem) 3rem;
         margin-inline:auto;
       }
 
@@ -84,6 +84,16 @@ st.markdown(
       div[data-testid="stVerticalBlockBorderWrapper"] {
         border-radius:8px !important; border:1px solid var(--line) !important;
         background:var(--surface); box-shadow:none; }
+      div[data-testid="stHorizontalBlock"] {
+        align-items:stretch;
+        flex-wrap:wrap !important;
+        gap:.72rem !important;
+      }
+      div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+        width:auto !important;
+        min-width:min(100%, 13.5rem) !important;
+        flex:1 1 13.5rem !important;
+      }
 
       /* Buttons — flat */
       .stButton>button, .stDownloadButton>button, .stLinkButton>a {
@@ -100,8 +110,15 @@ st.markdown(
       div[data-baseweb="select"]>div, .stTextInput input, .stNumberInput input, .stFileUploader section {
         border-radius:7px !important; }
       div[data-baseweb="select"]>div, .stTextInput input, .stNumberInput input {
-        background:var(--surface-3) !important; border-color:var(--line) !important; color:var(--text) !important; }
-      .stFileUploader section { border:1px dashed var(--line-strong); background:var(--surface-3); }
+        background:var(--surface-3) !important; border-color:var(--line) !important; color:var(--text) !important;
+        min-width:0 !important; }
+      div[data-baseweb="select"] { min-width:0 !important; }
+      div[data-baseweb="select"] span, div[data-baseweb="select"] div {
+        min-width:0 !important; overflow-wrap:anywhere; }
+      .stFileUploader section {
+        border:1px dashed var(--line-strong); background:var(--surface-3);
+        min-height:auto; }
+      .stFileUploader section * { max-width:100%; }
       label[data-baseweb="radio"] > div:first-child {
         background:transparent !important; border:1px solid var(--line-strong) !important; box-shadow:none !important; }
       label[data-baseweb="radio"] > div:first-child > div {
@@ -128,10 +145,14 @@ st.markdown(
       .company { font-weight:680; font-size:1.05rem; color:var(--text); }
       .title   { color:var(--muted); font-size:.95rem; }
       @media (min-width: 1180px) {
-        .block-container { width:min(76vw, 70rem); }
+        .block-container { width:min(88vw, 96rem); }
       }
       @media (max-width: 760px) {
-        .block-container { max-width:calc(100vw - 1rem); padding-top:1.2rem; }
+        .block-container {
+          width:calc(100vw - 1rem);
+          max-width:calc(100vw - 1rem);
+          padding-top:1.2rem;
+        }
         .hero h1 { font-size:2rem; }
       }
       @media (max-width: 420px) {
